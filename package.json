@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/generate-social-share.mjs && vite build",
     "preview": "vite preview"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
   },
   "devDependencies": {
     "vite": "^7.1.4"
