@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: Open Graph + Twitter Card + generated PNG social share preview
+Frontend: admin delete account + delete seminar registration controls
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T03:14:00+08:00
-Reason: show rich thumbnail preview when SIMASI link is shared to WhatsApp and social platforms
+Triggered: 2026-09-08T07:59:00+08:00
+Reason: admin can remove accounts and seminar submissions with explicit confirmation
