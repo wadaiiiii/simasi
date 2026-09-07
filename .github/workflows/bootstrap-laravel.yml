@@ -1,0 +1,55 @@
+name: Bootstrap Laravel 13
+
+on:
+  push:
+    branches:
+      - laravel-backend
+    paths:
+      - '.github/workflows/bootstrap-laravel.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend branch
+        uses: actions/checkout@v4
+        with:
+          ref: laravel-backend
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+
+      - name: Create official Laravel 13 skeleton
+        run: |
+          rm -rf /tmp/laravel
+          composer create-project laravel/laravel /tmp/laravel '^13.0' --prefer-dist --no-interaction
+
+      - name: Replace legacy Vite SPA with Laravel skeleton
+        run: |
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='supabase' \
+            --exclude='docs' \
+            --exclude='SUPABASE_SETUP.md' \
+            /tmp/laravel/ ./
+          rm -f .env
+
+      - name: Commit Laravel skeleton
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'chore: bootstrap official Laravel 13 application'
+            git push origin HEAD:laravel-backend
+          fi
