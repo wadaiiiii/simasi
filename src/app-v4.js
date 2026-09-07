@@ -3,6 +3,7 @@ import { landingHtml, privateShell, titleFor, adminDashboardHtml, registrationsH
 import { loadLandingData, loadAdminDashboard, loadRegistrations, renderRegistrationRows, showDocs, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser, createStaff, loadStudentHistory, validateSeminar, submitSeminar } from './v4/data.js'
 
 const app=$('#app')
+let navigationVersion=0
 
 async function renderLanding(){
   state.page='landing'; app.innerHTML=landingHtml()
@@ -26,7 +27,14 @@ async function renderPage(){
   if(state.page==='seminar'){main.innerHTML=seminarHtml();validateSeminar();return}
   main.innerHTML=studentDashboardHtml();await loadStudentHistory()
 }
-function setPage(page){state.page=page;renderPage();closeMenu();window.scrollTo({top:0,behavior:'smooth'})}
+async function setPage(page){
+  const version=++navigationVersion
+  state.page=page
+  await renderPrivate()
+  if(version!==navigationVersion)return
+  closeMenu()
+  window.scrollTo({top:0,behavior:'smooth'})
+}
 function openMenu(){$('#sidebar')?.classList.remove('-translate-x-full');$('#mobileOverlay')?.classList.remove('hidden')}
 function closeMenu(){$('#sidebar')?.classList.add('-translate-x-full');$('#mobileOverlay')?.classList.add('hidden')}
 function openLogin(){$('#loginModal')?.classList.remove('hidden')}
@@ -59,7 +67,7 @@ function openCreateStaff(){document.body.insertAdjacentHTML('beforeend',`<div id
 async function handleClick(e){
   const el=e.target.closest('button,a');if(!el)return
   if(el.dataset.scroll){e.preventDefault();document.getElementById(el.dataset.scroll)?.scrollIntoView({behavior:'smooth'});return}
-  if(el.dataset.page){e.preventDefault();setPage(el.dataset.page);return}
+  if(el.dataset.page){e.preventDefault();await setPage(el.dataset.page);return}
   const action=el.dataset.action
   if(action==='open-login')return openLogin()
   if(action==='close-login')return closeLogin()
