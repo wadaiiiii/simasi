@@ -1,5 +1,5 @@
 SIMASI Supabase production release trigger
-Timestamp: 2026-09-08T03:08:00+08:00
-Database migration: add distinct staff role and restrict seminar management by staff prodi
-Edge Functions: admin-users + preview-seminar-drive + existing seminar functions
-Reason: Staff manages seminar applications under Admin; Dosen is reserved for future academic modules
+Timestamp: 2026-09-08T07:58:00+08:00
+Database migration: existing lifecycle + staff program-study scope
+Edge Functions: admin-users + admin-seminar + preview/upload seminar functions
+Reason: add admin delete account and delete seminar registration with Google Drive cleanup
