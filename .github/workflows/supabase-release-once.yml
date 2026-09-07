@@ -84,6 +84,9 @@ jobs:
       - name: Deploy upload-seminar-drive
         run: supabase functions deploy upload-seminar-drive --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Deploy preview-seminar-drive
+        run: supabase functions deploy preview-seminar-drive --project-ref "$SUPABASE_PROJECT_REF"
+
       - name: Verify deployed Edge Functions
         run: supabase functions list --project-ref "$SUPABASE_PROJECT_REF"
 
@@ -93,5 +96,6 @@ jobs:
           echo '- Database lifecycle: applied through Supabase Management API' >> "$GITHUB_STEP_SUMMARY"
           echo '- Google Drive: FMIPA OAuth verified against configured SIMASI folder' >> "$GITHUB_STEP_SUMMARY"
           echo '- Seminar upload: PDF only, max 2 MB, metadata persisted by trusted Edge Function' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Secure preview: authenticated student owner or staff/admin only' >> "$GITHUB_STEP_SUMMARY"
           echo '- Lifecycle: diajukan → diverifikasi/perbaikan → lengkap' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive, preview-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
