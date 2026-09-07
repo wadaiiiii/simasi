@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: focused Seminar Proposal/Seminar Hasil + admin import + original navy/emerald UI
+Frontend: Portal v3 - public landing, proper login, fixed seminar UX, admin dashboard, registration monitoring, user management, Unsulbar logo
 Deployment path: Vercel REST API from built dist
-Triggered: 2026-09-07T21:10:00+08:00
-Reason: restore original color contrast after soft-theme experiment
+Triggered: 2026-09-07T21:20:00+08:00
+Reason: consolidate requested UI/UX and admin workflow in one production deployment
