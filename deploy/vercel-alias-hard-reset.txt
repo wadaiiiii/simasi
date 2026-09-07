@@ -1,0 +1,5 @@
+SIMASI canonical alias hard reset
+Domain: simasimipa.vercel.app
+Target deployment: dpl_4SFEkTwGCoGagHnDzpCzZenZM3Zt
+Expected release marker: brand-v8
+Triggered: 2026-09-08T00:18:00+08:00
