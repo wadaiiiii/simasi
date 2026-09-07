@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: SIMASI complete seminar lifecycle + student monitor + staff verification + academic information management + animated landing
+Frontend: SIMASI landing headline + centered mobile footer
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T00:55:00+08:00
-Reason: complete one full seminar process from upload/preview through revision and final complete verification
+Triggered: 2026-09-08T01:02:00+08:00
+Reason: replace landing hero title with Sistem Informasi Manajemen Kuliah & Skripsi and center footer identity on mobile
