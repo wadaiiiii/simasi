@@ -45,12 +45,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error \
+          HTTP_CODE=$(curl --silent --show-error \
+            -o /tmp/admin-result.json -w '%{http_code}' \
             -X POST "$SUPABASE_URL/functions/v1/bootstrap-admin-once" \
             -H 'Content-Type: application/json' \
-            -d '{}' >/tmp/admin-result.json
-          test "$(jq -r '.ok' /tmp/admin-result.json)" = true
-          test "$(jq -r '.email_sent' /tmp/admin-result.json)" = true
+            -d '{}')
+          echo "Bootstrap HTTP: $HTTP_CODE"
+          echo "Message: $(jq -r '.message // "unknown"' /tmp/admin-result.json)"
+          test "$(jq -r '.admin_ready // false' /tmp/admin-result.json)" = true
+          test "$(jq -r '.email_sent // false' /tmp/admin-result.json)" = true
           echo '### SIMASI first admin' >> "$GITHUB_STEP_SUMMARY"
           echo '- Email: fmipa@unsulbar.ac.id' >> "$GITHUB_STEP_SUMMARY"
           echo '- Role: admin' >> "$GITHUB_STEP_SUMMARY"
