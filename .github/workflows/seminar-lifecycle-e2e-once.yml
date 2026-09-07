@@ -1,0 +1,180 @@
+name: SIMASI Seminar Lifecycle E2E (One Shot)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/seminar-lifecycle-e2e-trigger.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simasi-seminar-lifecycle-e2e
+  cancel-in-progress: false
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
+      SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+      GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare isolated identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          E2E_TOKEN="$(openssl rand -hex 32)"
+          ADMIN_PASSWORD="A9!$(openssl rand -hex 18)"
+          NEW_STUDENT_PASSWORD="S9!$(openssl rand -hex 18)"
+          TEST_NIM="L${GITHUB_RUN_ID}"
+          ADMIN_EMAIL="lifecycle-admin-${GITHUB_RUN_ID}@students.simasi.local"
+          for x in "$E2E_TOKEN" "$ADMIN_PASSWORD" "$NEW_STUDENT_PASSWORD"; do echo "::add-mask::$x"; done
+          {
+            echo "E2E_TOKEN=$E2E_TOKEN"
+            echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
+            echo "NEW_STUDENT_PASSWORD=$NEW_STUDENT_PASSWORD"
+            echo "TEST_NIM=$TEST_NIM"
+            echo "ADMIN_EMAIL=$ADMIN_EMAIL"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Supabase CLI
+        run: npm install --global supabase@latest
+
+      - name: Deploy protected E2E helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" SIMASI_E2E_TOKEN="$E2E_TOKEN"
+          supabase functions deploy e2e-test-helper --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+
+      - name: Create temporary admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg email "$ADMIN_EMAIL" --arg password "$ADMIN_PASSWORD" '{action:"create_admin",email:$email,password:$password}' >/tmp/admin-payload.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/e2e-test-helper" -H "x-simasi-e2e-token: $E2E_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/admin-payload.json >/tmp/admin.json
+          ADMIN_TOKEN=$(jq -r '.access_token' /tmp/admin.json); ADMIN_USER_ID=$(jq -r '.user_id' /tmp/admin.json); PUBLIC_KEY=$(jq -r '.public_key' /tmp/admin.json)
+          test -n "$ADMIN_TOKEN" && test "$ADMIN_TOKEN" != null
+          echo "::add-mask::$ADMIN_TOKEN"; echo "::add-mask::$PUBLIC_KEY"
+          { echo "ADMIN_TOKEN=$ADMIN_TOKEN"; echo "ADMIN_USER_ID=$ADMIN_USER_ID"; echo "PUBLIC_KEY=$PUBLIC_KEY"; } >> "$GITHUB_ENV"
+
+      - name: Import and login temporary student
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg nim "$TEST_NIM" '{students:[{nim:$nim,nama:"Mahasiswa Uji Lifecycle",prodi:"Matematika"}]}' >/tmp/import.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/import-mahasiswa" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' --data-binary @/tmp/import.json >/tmp/import-out.json
+          test "$(jq -r '.ok' /tmp/import-out.json)" = true
+          STUDENT_EMAIL="$(echo "$TEST_NIM"|tr '[:upper:]' '[:lower:]')@students.simasi.local"
+          jq -n --arg email "$STUDENT_EMAIL" --arg password "$TEST_NIM" '{action:"sign_in",email:$email,password:$password}' >/tmp/signin.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/e2e-test-helper" -H "x-simasi-e2e-token: $E2E_TOKEN" -H 'content-type: application/json' --data-binary @/tmp/signin.json >/tmp/student.json
+          STUDENT_TOKEN=$(jq -r '.access_token' /tmp/student.json); STUDENT_USER_ID=$(jq -r '.user_id' /tmp/student.json)
+          echo "::add-mask::$STUDENT_TOKEN"
+          { echo "STUDENT_EMAIL=$STUDENT_EMAIL"; echo "STUDENT_TOKEN=$STUDENT_TOKEN"; echo "STUDENT_USER_ID=$STUDENT_USER_ID"; } >> "$GITHUB_ENV"
+
+      - name: Complete first password change
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg p "$NEW_STUDENT_PASSWORD" '{new_password:$p}' >/tmp/password.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/change-initial-password" -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' --data-binary @/tmp/password.json >/tmp/password-out.json
+          test "$(jq -r '.ok' /tmp/password-out.json)" = true
+
+      - name: Create seminar registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg uid "$STUDENT_USER_ID" --arg nim "$TEST_NIM" '{user_id:$uid,nim:$nim,nama:"Mahasiswa Uji Lifecycle",prodi:"Matematika",jenis_ujian:"Seminar Proposal",pas_foto_jumlah:2,status:"diajukan"}' >/tmp/reg.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/rest/v1/pendaftaran_seminar" -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -H 'Prefer: return=representation' --data-binary @/tmp/reg.json >/tmp/reg-out.json
+          REGISTRATION_ID=$(jq -r '.[0].id' /tmp/reg-out.json); test -n "$REGISTRATION_ID" && test "$REGISTRATION_ID" != null
+          echo "REGISTRATION_ID=$REGISTRATION_ID" >> "$GITHUB_ENV"
+
+      - name: Upload all 10 required PDFs and persist metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          : >/tmp/drive-ids.txt
+          printf '%%PDF-1.4\n%% SIMASI lifecycle E2E\n1 0 obj << /Type /Catalog >> endobj\n%%%%EOF\n' >/tmp/test.pdf
+          keys=(persetujuan_ta krs khs transkrip ijazah ktp kontrol_pembimbing kontrol_seminar sk_kegiatan pas_foto)
+          labels=('Halaman Persetujuan Tugas Akhir' 'Kartu Rencana Studi Semester Terakhir' 'Kartu Hasil Studi Semester Terakhir' 'Transkrip Nilai Terakhir' 'Fotocopy Ijazah SMA' 'Fotocopy KTP' 'Kartu Kontrol Pembimbing' 'Kartu Kontrol Mengikuti Seminar' 'SK Kegiatan' 'Pas Foto 3x4')
+          for i in "${!keys[@]}"; do
+            curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/upload-seminar-drive" \
+              -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" \
+              -F "file=@/tmp/test.pdf;type=application/pdf" -F "nim=$TEST_NIM" -F 'nama=Mahasiswa Uji Lifecycle' -F 'prodi=Matematika' \
+              -F 'exam_type=Seminar Proposal' -F "registration_id=$REGISTRATION_ID" -F "document_key=${keys[$i]}" -F "document_label=${labels[$i]}" -F 'persist_metadata=true' >/tmp/up.json
+            test "$(jq -r '.ok' /tmp/up.json)" = true
+            test "$(jq -r '.metadata_persisted' /tmp/up.json)" = true
+            jq -r '.file_id' /tmp/up.json >>/tmp/drive-ids.txt
+          done
+          COUNT=$(curl --fail --silent "$SUPABASE_URL/rest/v1/berkas_seminar?pendaftaran_id=eq.$REGISTRATION_ID&select=id" -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" | jq 'length')
+          test "$COUNT" = 10
+
+      - name: Staff verification then request one revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/pendaftaran_seminar?id=eq.$REGISTRATION_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d '{"status":"diverifikasi"}' >/dev/null
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/berkas_seminar?pendaftaran_id=eq.$REGISTRATION_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d "{\"status\":\"valid\",\"verified_by\":\"$ADMIN_USER_ID\",\"verified_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >/dev/null
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/berkas_seminar?pendaftaran_id=eq.$REGISTRATION_ID&jenis_berkas=eq.persetujuan_ta" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d '{"status":"perbaikan","catatan_verifikator":"Ganti halaman persetujuan dengan versi terbaru","verified_by":null,"verified_at":null}' >/dev/null
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/pendaftaran_seminar?id=eq.$REGISTRATION_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d '{"status":"perbaikan","catatan_verifikator":"Mohon perbaiki berkas yang ditandai."}' >/dev/null
+
+      - name: Student reuploads requested revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/functions/v1/upload-seminar-drive" \
+            -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" \
+            -F "file=@/tmp/test.pdf;type=application/pdf" -F "nim=$TEST_NIM" -F 'nama=Mahasiswa Uji Lifecycle' -F 'prodi=Matematika' \
+            -F 'exam_type=Seminar Proposal' -F "registration_id=$REGISTRATION_ID" -F 'document_key=persetujuan_ta' -F 'document_label=Halaman Persetujuan Tugas Akhir' -F 'persist_metadata=true' >/tmp/revision.json
+          test "$(jq -r '.ok' /tmp/revision.json)" = true
+          jq -r '.file_id' /tmp/revision.json >>/tmp/drive-ids.txt
+          STATUS=$(curl --fail --silent "$SUPABASE_URL/rest/v1/pendaftaran_seminar?id=eq.$REGISTRATION_ID&select=status" -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" | jq -r '.[0].status')
+          test "$STATUS" = diajukan
+
+      - name: Staff validates revision and declares complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/berkas_seminar?pendaftaran_id=eq.$REGISTRATION_ID&jenis_berkas=eq.persetujuan_ta" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d "{\"status\":\"valid\",\"catatan_verifikator\":null,\"verified_by\":\"$ADMIN_USER_ID\",\"verified_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >/dev/null
+          VALID=$(curl --fail --silent "$SUPABASE_URL/rest/v1/berkas_seminar?pendaftaran_id=eq.$REGISTRATION_ID&status=eq.valid&select=id" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" | jq 'length')
+          test "$VALID" = 10
+          curl --fail-with-body --silent --show-error -X PATCH "$SUPABASE_URL/rest/v1/pendaftaran_seminar?id=eq.$REGISTRATION_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -d "{\"status\":\"lengkap\",\"catatan_verifikator\":\"Berkas dinyatakan lengkap.\",\"verified_by\":\"$ADMIN_USER_ID\",\"verified_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"completed_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >/dev/null
+          STATUS=$(curl --fail --silent "$SUPABASE_URL/rest/v1/pendaftaran_seminar?id=eq.$REGISTRATION_ID&select=status,completed_at" -H "Authorization: Bearer $STUDENT_TOKEN" -H "apikey: $PUBLIC_KEY" | jq -r '.[0].status')
+          test "$STATUS" = lengkap
+
+      - name: Verify landing academic information CRUD
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg uid "$ADMIN_USER_ID" '{judul:"E2E Informasi Akademik",isi:"Informasi uji sementara SIMASI",tanggal:(now|strftime("%Y-%m-%d")),is_active:true,created_by:$uid}' >/tmp/ann.json
+          curl --fail-with-body --silent --show-error -X POST "$SUPABASE_URL/rest/v1/pengumuman" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" -H 'content-type: application/json' -H 'Prefer: return=representation' --data-binary @/tmp/ann.json >/tmp/ann-out.json
+          ANN_ID=$(jq -r '.[0].id' /tmp/ann-out.json); test -n "$ANN_ID"
+          PUBLIC_COUNT=$(curl --fail --silent "$SUPABASE_URL/rest/v1/pengumuman?id=eq.$ANN_ID&select=id" -H "apikey: $PUBLIC_KEY" | jq 'length')
+          test "$PUBLIC_COUNT" = 1
+          curl --fail-with-body --silent --show-error -X DELETE "$SUPABASE_URL/rest/v1/pengumuman?id=eq.$ANN_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "apikey: $PUBLIC_KEY" >/dev/null
+          echo '### SIMASI Seminar Lifecycle E2E — PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- 10 PDF + metadata Google Drive: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Staff verification: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Revision request + student reupload: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Final Berkas Lengkap: PASS' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Informasi Akademik landing CRUD/public read: PASS' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup Drive and temporary identities
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -s /tmp/drive-ids.txt ]; then
+            ACCESS=$(curl --silent -X POST https://oauth2.googleapis.com/token -d "client_id=$GOOGLE_OAUTH_CLIENT_ID" -d "client_secret=$GOOGLE_OAUTH_CLIENT_SECRET" -d "refresh_token=$GOOGLE_OAUTH_REFRESH_TOKEN" -d 'grant_type=refresh_token' | jq -r '.access_token // empty')
+            if [ -n "$ACCESS" ]; then while read -r ID; do [ -n "$ID" ] && curl --silent -X DELETE "https://www.googleapis.com/drive/v3/files/$ID?supportsAllDrives=true" -H "Authorization: Bearer $ACCESS" >/dev/null; done </tmp/drive-ids.txt; fi
+          fi
+          jq -n --arg aid "${ADMIN_USER_ID:-}" --arg sid "${STUDENT_USER_ID:-}" --arg nim "${TEST_NIM:-}" '{action:"cleanup",admin_user_id:$aid,student_user_id:$sid,nim:$nim}' >/tmp/cleanup.json
+          curl --silent -X POST "$SUPABASE_URL/functions/v1/e2e-test-helper" -H "x-simasi-e2e-token: ${E2E_TOKEN:-}" -H 'content-type: application/json' --data-binary @/tmp/cleanup.json >/dev/null
+          supabase secrets unset --project-ref "$SUPABASE_PROJECT_REF" SIMASI_E2E_TOKEN >/dev/null 2>&1
