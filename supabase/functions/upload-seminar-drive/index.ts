@@ -1,5 +1,5 @@
 import { corsHeaders, getContext, json } from '../_shared/auth.ts'
-import { findOrCreateFolder, getDriveToken, uploadFile } from '../_shared/googleDrive.ts'
+import { findOrCreateFolder, getDriveToken, uploadFile, verifyFolderAccess } from '../_shared/googleDrive.ts'
 
 const ROOT_FOLDER_ID = Deno.env.get('GOOGLE_DRIVE_ROOT_FOLDER_ID') || '19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv'
 const MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
     }
 
     const token = await getDriveToken()
+    await verifyFolderAccess(token, ROOT_FOLDER_ID)
+
     const prodiFolder = await findOrCreateFolder(token, clean(prodi), ROOT_FOLDER_ID)
     const studentFolder = await findOrCreateFolder(token, clean(`${nim} - ${nama}`), prodiFolder)
     const examFolder = await findOrCreateFolder(token, examType, studentFolder)
