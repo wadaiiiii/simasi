@@ -35,7 +35,8 @@ const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
 })
 
 if (!tokenResponse.ok) {
-  console.error(`Google service-account authentication failed (${tokenResponse.status}).`)
+  const detail = await tokenResponse.text()
+  console.error(`Google service-account authentication failed (${tokenResponse.status}): ${detail.slice(0, 500)}`)
   process.exit(1)
 }
 
@@ -46,7 +47,8 @@ const folderResponse = await fetch(
 )
 
 if (!folderResponse.ok) {
-  console.error(`Service account cannot access SIMASI root folder (${folderResponse.status}).`)
+  const detail = await folderResponse.text()
+  console.error(`Service account cannot access SIMASI root folder (${folderResponse.status}): ${detail.slice(0, 800)}`)
   process.exit(1)
 }
 
