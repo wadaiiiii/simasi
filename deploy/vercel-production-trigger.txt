@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: distinct Admin, Staff, Dosen, Mahasiswa role routing and navigation
+Frontend: Open Graph + Twitter Card + generated PNG social share preview
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T03:08:30+08:00
-Reason: Staff manages seminar applications; Dosen uses separate future academic dashboard
+Triggered: 2026-09-08T03:14:00+08:00
+Reason: show rich thumbnail preview when SIMASI link is shared to WhatsApp and social platforms
