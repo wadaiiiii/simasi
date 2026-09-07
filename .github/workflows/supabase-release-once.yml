@@ -52,6 +52,7 @@ jobs:
               Path('supabase/student_import_drive.sql').read_text(),
               Path('supabase/admin_portal.sql').read_text(),
               Path('supabase/seminar_lifecycle.sql').read_text(),
+              Path('supabase/staff_prodi_scope.sql').read_text(),
           ])
           Path('/tmp/simasi-query.json').write_text(json.dumps({'query': sql, 'read_only': False}))
           PY
@@ -78,6 +79,9 @@ jobs:
       - name: Deploy import-mahasiswa
         run: supabase functions deploy import-mahasiswa --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Deploy admin-users
+        run: supabase functions deploy admin-users --project-ref "$SUPABASE_PROJECT_REF"
+
       - name: Deploy change-initial-password
         run: supabase functions deploy change-initial-password --project-ref "$SUPABASE_PROJECT_REF"
 
@@ -94,8 +98,10 @@ jobs:
         run: |
           echo '### SIMASI backend release' >> "$GITHUB_STEP_SUMMARY"
           echo '- Database lifecycle: applied through Supabase Management API' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Staff scope: Dosen/Staf hanya dapat mengelola pengajuan dari profile.prodi yang sama' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Admin scope: administrator tetap dapat mengelola seluruh program studi' >> "$GITHUB_STEP_SUMMARY"
           echo '- Google Drive: FMIPA OAuth verified against configured SIMASI folder' >> "$GITHUB_STEP_SUMMARY"
           echo '- Seminar upload: PDF only, max 2 MB, metadata persisted by trusted Edge Function' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Secure preview: authenticated student owner or staff/admin only' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Secure preview: mahasiswa pemilik, admin, atau staf pada Prodi yang sama' >> "$GITHUB_STEP_SUMMARY"
           echo '- Lifecycle: diajukan → diverifikasi/perbaikan → lengkap' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive, preview-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Edge Functions: import-mahasiswa, admin-users, change-initial-password, upload-seminar-drive, preview-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
