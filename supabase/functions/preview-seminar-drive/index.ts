@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
     const { data: doc, error } = await admin
       .from('berkas_seminar')
-      .select('id,nama_berkas,storage_provider,drive_file_id,pendaftaran_seminar!inner(user_id)')
+      .select('id,nama_berkas,storage_provider,drive_file_id,pendaftaran_seminar!inner(user_id,prodi)')
       .eq('id', documentId)
       .maybeSingle()
 
@@ -23,10 +23,15 @@ Deno.serve(async (req) => {
     if (!doc) return json({ ok: false, message: 'Berkas tidak ditemukan.' }, 404)
 
     const registration = (doc as any).pendaftaran_seminar
-    const ownerId = Array.isArray(registration) ? registration[0]?.user_id : registration?.user_id
-    const isStaff = ['dosen', 'admin'].includes(String(profile.role || '').toLowerCase())
-    if (!isStaff && ownerId !== user.id) {
-      return json({ ok: false, message: 'Anda tidak memiliki akses ke berkas ini.' }, 403)
+    const reg = Array.isArray(registration) ? registration[0] : registration
+    const ownerId = reg?.user_id
+    const registrationProdi = String(reg?.prodi || '').trim().toLowerCase()
+    const role = String(profile.role || '').trim().toLowerCase()
+    const profileProdi = String(profile.prodi || '').trim().toLowerCase()
+    const canManage = role === 'admin' || (role === 'dosen' && Boolean(profileProdi) && profileProdi === registrationProdi)
+
+    if (ownerId !== user.id && !canManage) {
+      return json({ ok: false, message: 'Akses ditolak. Staf hanya dapat membuka berkas mahasiswa pada program studinya.' }, 403)
     }
     if (doc.storage_provider !== 'google_drive' || !doc.drive_file_id) {
       return json({ ok: false, message: 'Preview hanya tersedia untuk berkas Google Drive.' }, 409)
