@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: no-email password creation/reset flow
+Frontend: distinct Admin, Staff, Dosen, Mahasiswa role routing and navigation
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T02:55:00+08:00
-Reason: explicitly deploy password reset credentials shown once in admin; no password email is sent
+Triggered: 2026-09-08T03:08:30+08:00
+Reason: Staff manages seminar applications; Dosen uses separate future academic dashboard
