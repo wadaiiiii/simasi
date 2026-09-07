@@ -5,8 +5,7 @@ export const $ = (s) => document.querySelector(s)
 export const $$ = (s) => [...document.querySelectorAll(s)]
 export const esc = (v) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')
 export const fmt = (v) => v ? new Date(v).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-'
-export const LOGO = 'https://unsulbar.ac.id/wp-content/uploads/2014/10/Unsulbar-Logo-1.png'
-export const LOGO_FALLBACK = 'https://unsulbar.ac.id/uploads/pages/2026/05/img-20260518-11d70975ca6b59a6.png'
+export const LOGO = 'https://akademik.unsulbar.ac.id/images/logo-unsulbar.png'
 export const PRODI = ['Matematika','Statistika','Aktuaria','Bioteknologi']
 export const DOCS = [
   ['persetujuan_ta','Halaman Persetujuan Tugas Akhir'],
@@ -52,7 +51,7 @@ export async function edge(name,body){
   return data
 }
 export function logo(size='h-14 w-14'){
-  return `<div class="simasi-logo-frame ${size} shrink-0 rounded-2xl border border-slate-200 bg-white"><img src="${LOGO}" onerror="this.onerror=null;this.src='${LOGO_FALLBACK}'" alt="Logo Universitas Sulawesi Barat"></div>`
+  return `<div class="simasi-logo-frame ${size} shrink-0 rounded-2xl border border-slate-200 bg-white"><img src="${LOGO}" alt="Logo Universitas Sulawesi Barat"></div>`
 }
 export function statusBadge(status){
   const map={diajukan:'bg-amber-50 text-amber-700',diverifikasi:'bg-blue-50 text-blue-700',perbaikan:'bg-rose-50 text-rose-700',disetujui:'bg-emerald-50 text-emerald-700',gagal_upload:'bg-rose-50 text-rose-700'}
