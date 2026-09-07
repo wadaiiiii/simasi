@@ -1,0 +1,39 @@
+:root{--pointer-x:0;--pointer-y:0}
+
+/* Landing interactive background */
+.landing-interactive{position:relative;isolation:isolate;background:linear-gradient(135deg,#fbfcff 0%,#f7f8ff 52%,#f3f5ff 100%)}
+.landing-interactive::before,.landing-interactive::after{content:"";position:absolute;z-index:-1;border-radius:999px;filter:blur(2px);pointer-events:none;will-change:transform}
+.landing-interactive::before{width:34rem;height:34rem;left:-12rem;top:-15rem;background:radial-gradient(circle,rgba(235,72,93,.15) 0%,rgba(109,45,144,.08) 46%,transparent 72%);transform:translate(calc(var(--pointer-x)*18px),calc(var(--pointer-y)*14px));animation:simasiFloatA 10s ease-in-out infinite alternate}
+.landing-interactive::after{width:40rem;height:40rem;right:-15rem;bottom:-20rem;background:radial-gradient(circle,rgba(10,123,181,.17) 0%,rgba(34,53,174,.10) 42%,rgba(73,22,153,.05) 58%,transparent 74%);transform:translate(calc(var(--pointer-x)*-20px),calc(var(--pointer-y)*-16px));animation:simasiFloatB 12s ease-in-out infinite alternate}
+.landing-orb{position:absolute;z-index:-1;border-radius:999px;pointer-events:none;opacity:.65;will-change:transform}
+.landing-orb.one{width:15px;height:120px;right:12%;top:18%;background:linear-gradient(180deg,#eb485d,#6d2d90);animation:simasiPill 7.5s ease-in-out infinite}
+.landing-orb.two{width:15px;height:104px;right:9%;top:24%;background:linear-gradient(180deg,#0a7bb5,#182e79);animation:simasiPill 8.5s ease-in-out -1.8s infinite}
+.landing-orb.three{width:15px;height:92px;right:6%;top:30%;background:linear-gradient(180deg,#2235ae,#491699);animation:simasiPill 9s ease-in-out -3.1s infinite}
+@keyframes simasiFloatA{from{margin-top:-8px}to{margin-top:22px}}
+@keyframes simasiFloatB{from{margin-bottom:-10px}to{margin-bottom:28px}}
+@keyframes simasiPill{0%,100%{transform:translateY(-6px) rotate(0deg)}50%{transform:translateY(18px) rotate(3deg)}}
+
+/* Avoid misleading disabled-looking submit: action always responds with validation reason. */
+#submitSeminar[data-ready="false"]{filter:saturate(.72);box-shadow:none!important}
+#submitSeminar[data-ready="true"]{box-shadow:0 12px 26px rgba(34,53,174,.22)!important}
+.doc-row.complete{border-color:rgba(10,123,181,.28);background:linear-gradient(90deg,rgba(10,123,181,.025),rgba(34,53,174,.02))}
+
+/* Workflow cards */
+[data-review-row] select,[data-review-row] input{min-height:42px}
+#registrationReviewModal,#studentApplicationModal,#pdfPreviewModal,#allDocsPreviewModal{overscroll-behavior:contain}
+#submitProgressBar{min-width:0}
+
+/* Mobile ergonomics */
+@media(max-width:640px){
+  .landing-interactive::before{width:22rem;height:22rem;left:-11rem;top:-9rem;opacity:.75}
+  .landing-interactive::after{width:25rem;height:25rem;right:-13rem;bottom:-11rem;opacity:.7}
+  .landing-orb{display:none}
+  #registrationReviewModal select{width:100%}
+  #pdfPreviewModal{padding:0}
+  #pdfPreviewModal>div:first-child{border-radius:0}
+  #pdfPreviewModal iframe{border-radius:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .landing-interactive::before,.landing-interactive::after,.landing-orb{animation:none!important;transform:none!important}
+  *{scroll-behavior:auto!important}
+}
