@@ -1,0 +1,58 @@
+name: SIMASI Academic Info Visibility Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/audit-announcements-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_REF: jdptpfpmelmaviucaioq
+      SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve API keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            "https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys?reveal=true" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" >/tmp/keys.json
+          ANON=$(jq -r '[.[] | select(.name=="anon") | .api_key][0] // [.[] | select(.type=="publishable") | .api_key][0] // empty' /tmp/keys.json)
+          SERVICE=$(jq -r '[.[] | select(.name=="service_role") | .api_key][0] // empty' /tmp/keys.json)
+          test -n "$ANON" && test -n "$SERVICE"
+          echo "::add-mask::$ANON"; echo "::add-mask::$SERVICE"
+          echo "ANON=$ANON" >> "$GITHUB_ENV"
+          echo "SERVICE=$SERVICE" >> "$GITHUB_ENV"
+      - name: Compare service and public visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&order=created_at.desc" \
+            -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" >/tmp/all.json
+          curl --silent --show-error -D /tmp/public.headers "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&is_active=eq.true&order=tanggal.desc" \
+            -H "apikey: $ANON" >/tmp/public.json
+          ALL_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/all.json)
+          ACTIVE_COUNT=$(jq '[.[] | select(.is_active==true)] | length' /tmp/all.json 2>/dev/null || echo 0)
+          PUBLIC_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/public.json)
+          HTTP=$(awk 'NR==1{print $2}' /tmp/public.headers)
+          echo "### Academic Info Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "- total_service_visible: $ALL_COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "- active_service_visible: $ACTIVE_COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "- public_http: $HTTP" >> "$GITHUB_STEP_SUMMARY"
+          echo "- public_active_visible: $PUBLIC_COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "- service_latest_titles:" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.[0:5][]? | "  - [active=\(.is_active)] \(.tanggal) | \(.judul)"' /tmp/all.json >> "$GITHUB_STEP_SUMMARY"
+          echo "SERVICE_TOTAL=$ALL_COUNT ACTIVE_TOTAL=$ACTIVE_COUNT PUBLIC_HTTP=$HTTP PUBLIC_TOTAL=$PUBLIC_COUNT"
+          if [ "$ACTIVE_COUNT" -gt 0 ] && [ "$PUBLIC_COUNT" -eq 0 ]; then
+            echo "PUBLIC_VISIBILITY_BROKEN=true" >> "$GITHUB_ENV"
+          else
+            echo "PUBLIC_VISIBILITY_BROKEN=false" >> "$GITHUB_ENV"
+          fi
