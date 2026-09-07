@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: clean V4 single-entry SPA, Plus Jakarta Sans, LMS-inspired public structure, admin monitoring and user management
+Frontend: simplified public information landing, compact login modal, alternate Unsulbar logo source, deterministic private navigation
 Deployment path: Vercel REST API from built dist
-Triggered: 2026-09-07T22:25:00+08:00
-Reason: eliminate legacy/injected frontend conflicts causing blank admin pages
+Triggered: 2026-09-07T22:36:00+08:00
+Reason: fix stuck admin navigation and simplify public landing/login
