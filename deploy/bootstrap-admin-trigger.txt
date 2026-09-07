@@ -1,5 +1,5 @@
 Bootstrap first SIMASI administrator
 Target: fmipa@unsulbar.ac.id
 Site: https://simasimipa.vercel.app
-Retry: existing Auth user lookup enabled
-Triggered: 2026-09-07T20:30:00+08:00
+Retry: auth-safe temporary password length
+Triggered: 2026-09-07T20:33:00+08:00
