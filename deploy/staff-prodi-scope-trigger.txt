@@ -1,0 +1,3 @@
+SIMASI staff program-study scope patch trigger
+Timestamp: 2026-09-08T02:10:00+08:00
+Scope: frontend + Edge Functions + RLS + production release triggers
