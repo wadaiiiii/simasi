@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
     let userId = authUser?.id || null
     let created = false
     if (!userId) {
-      const password = `A9!${crypto.randomUUID()}${crypto.randomUUID()}`
+      // Keep comfortably below bcrypt/Auth password-length limits.
+      const password = `A9!${crypto.randomUUID()}`
       const createdUser = await admin.auth.admin.createUser({
         email: ADMIN_EMAIL,
         password,
