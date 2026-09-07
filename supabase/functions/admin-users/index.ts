@@ -1,6 +1,6 @@
 import { corsHeaders, getContext, json } from '../_shared/auth.ts'
 
-const ALLOWED_ROLES = ['mahasiswa', 'dosen', 'admin']
+const ALLOWED_ROLES = ['mahasiswa', 'staff', 'dosen', 'admin']
 const ALLOWED_PRODI = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']
 
 function createTemporaryPassword(): string {
@@ -63,6 +63,11 @@ Deno.serve(async (req) => {
       const newRole = String(body.role || '')
       if (!userId || !ALLOWED_ROLES.includes(newRole)) return json({ ok: false, message: 'User atau role tidak valid.' }, 400)
       if (userId === user.id && newRole !== 'admin') return json({ ok: false, message: 'Admin tidak dapat menurunkan role akun sendiri.' }, 400)
+      const targetProfile = await admin.from('profiles').select('prodi').eq('id', userId).maybeSingle()
+      if (targetProfile.error) throw targetProfile.error
+      if (['staff', 'dosen'].includes(newRole) && !ALLOWED_PRODI.includes(String(targetProfile.data?.prodi || ''))) {
+        return json({ ok: false, message: 'Tetapkan Program Studi terlebih dahulu sebelum mengubah role menjadi Staff/Dosen.' }, 400)
+      }
       const updated = await admin.from('profiles').update({ role: newRole }).eq('id', userId)
       if (updated.error) throw updated.error
       return json({ ok: true, message: 'Role user diperbarui.' })
@@ -115,10 +120,10 @@ Deno.serve(async (req) => {
     if (action === 'create_staff') {
       const email = String(body.email || '').trim().toLowerCase()
       const fullName = String(body.full_name || '').trim()
-      const requestedRole = String(body.role || 'dosen')
-      const requestedProdi = requestedRole === 'dosen' ? String(body.prodi || '').trim() : ''
-      if (!email.includes('@') || !fullName || !['dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)
-      if (requestedRole === 'dosen' && !ALLOWED_PRODI.includes(requestedProdi)) return json({ ok: false, message: 'Program studi staf wajib dipilih dan harus valid.' }, 400)
+      const requestedRole = String(body.role || 'staff')
+      const requestedProdi = ['staff', 'dosen'].includes(requestedRole) ? String(body.prodi || '').trim() : ''
+      if (!email.includes('@') || !fullName || !['staff', 'dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)
+      if (['staff', 'dosen'].includes(requestedRole) && !ALLOWED_PRODI.includes(requestedProdi)) return json({ ok: false, message: 'Program studi Staff/Dosen wajib dipilih dan harus valid.' }, 400)
 
       const temporaryPassword = createTemporaryPassword()
       let authUser = await findAuthUserByEmail(admin, email)
@@ -150,7 +155,7 @@ Deno.serve(async (req) => {
         email,
         full_name: fullName,
         role: requestedRole,
-        prodi: requestedRole === 'dosen' ? requestedProdi : null,
+        prodi: ['staff', 'dosen'].includes(requestedRole) ? requestedProdi : null,
         must_change_password: true
       }, { onConflict: 'id' })
       if (profileWrite.error) throw profileWrite.error
@@ -164,7 +169,7 @@ Deno.serve(async (req) => {
         role: requestedRole,
         temporary_password: temporaryPassword,
         must_change_password: true,
-        message: 'Akun staf siap. Password sementara ditampilkan satu kali kepada admin dan tidak dikirim melalui email.'
+        message: 'Akun pengguna siap. Password sementara ditampilkan satu kali kepada admin dan tidak dikirim melalui email.'
       })
     }
 

@@ -36,7 +36,8 @@ export const state = {
 
 export const role = () => String(state.profile?.role || '').toLowerCase()
 export const isAdmin = () => role() === 'admin'
-export const isStaff = () => ['dosen','admin'].includes(role())
+export const isStaff = () => ['staff','admin'].includes(role())
+export const isLecturer = () => role() === 'dosen'
 export const isStudent = () => role() === 'mahasiswa'
 export const normalizeNim = (v) => String(v ?? '').trim().replace(/\s+/g,'').toUpperCase()
 export const normalizeProdi = (v) => { const s=String(v??'').toLowerCase(); return PRODI.find(p=>s.includes(p.toLowerCase())) || '' }

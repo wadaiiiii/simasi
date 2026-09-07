@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     const registrationProdi = String(reg?.prodi || '').trim().toLowerCase()
     const role = String(profile.role || '').trim().toLowerCase()
     const profileProdi = String(profile.prodi || '').trim().toLowerCase()
-    const canManage = role === 'admin' || (role === 'dosen' && Boolean(profileProdi) && profileProdi === registrationProdi)
+    const canManage = role === 'admin' || (role === 'staff' && Boolean(profileProdi) && profileProdi === registrationProdi)
 
     if (ownerId !== user.id && !canManage) {
       return json({ ok: false, message: 'Akses ditolak. Staf hanya dapat membuka berkas mahasiswa pada program studinya.' }, 403)

@@ -1,4 +1,4 @@
-import { logo, PRODI, DOCS, state, isAdmin, isStaff, esc, normalizeProdi } from '../v4/core.js'
+import { logo, PRODI, DOCS, state, isAdmin, isStaff, isLecturer, esc, normalizeProdi } from '../v4/core.js'
 export { importHtml, usersHtml } from '../v4/views.js'
 
 function passwordModal(){
@@ -23,6 +23,14 @@ function staffNav(){
     <button data-page="admin-registrations" class="simasi-nav">☷ Monitoring Pendaftar</button>
     <div class="my-4 border-t border-white/10"></div><button data-action="logout" class="simasi-nav text-rose-200">← Keluar</button>`
 }
+function lecturerNav(){
+  return `<p class="px-3 py-2 text-[10px] font-bold uppercase tracking-[.2em] text-slate-400">Dosen</p>
+    <button data-page="lecturer-dashboard" class="simasi-nav">▦ Dashboard Dosen</button>
+    <div class="my-4 border-t border-white/10"></div>
+    <button class="simasi-nav disabled" disabled>▤ Manajemen Kuliah <span class="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[9px]">Segera</span></button>
+    <button class="simasi-nav disabled" disabled>✎ Bimbingan Skripsi <span class="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[9px]">Segera</span></button>
+    <div class="my-4 border-t border-white/10"></div><button data-action="logout" class="simasi-nav text-rose-200">← Keluar</button>`
+}
 function studentNav(){
   return `<p class="px-3 py-2 text-[10px] font-bold uppercase tracking-[.2em] text-slate-400">Menu Utama</p>
     <button data-page="student-dashboard" class="simasi-nav">▦ Dashboard</button>
@@ -36,7 +44,7 @@ function studentNav(){
 
 export function privateShell(){
   const name=state.profile?.full_name||state.user?.email||'Pengguna',initial=name.charAt(0).toUpperCase()
-  const nav=isAdmin()?adminNav():isStaff()?staffNav():studentNav()
+  const nav=isAdmin()?adminNav():isStaff()?staffNav():isLecturer()?lecturerNav():studentNav()
   return `<div class="min-h-screen bg-[#f7f9fc]">
     <div id="mobileOverlay" data-action="close-menu" class="fixed inset-0 z-40 hidden bg-slate-950/50 lg:hidden"></div>
     <aside id="sidebar" class="simasi-sidebar fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col text-white transition lg:translate-x-0">
@@ -55,6 +63,7 @@ export function titleFor(page){
   const m={
     'admin-dashboard':['Dashboard Admin','Administrator SIMASI'],
     'staff-dashboard':['Dashboard Staf','Staf Akademik SIMASI'],
+    'lecturer-dashboard':['Dashboard Dosen','Dosen SIMASI'],
     'admin-registrations':['Monitoring Pendaftar','Verifikasi Berkas Seminar'],
     'admin-announcements':['Informasi Akademik','Administrator SIMASI'],
     'admin-import':['Import Data Mahasiswa','Administrator SIMASI'],
@@ -71,6 +80,11 @@ export function adminDashboardHtml(staff=false){
   return `<div class="simasi-hero rounded-3xl p-7 text-white"><p class="text-xs font-extrabold uppercase tracking-[.16em] text-emerald-200">${staff?'Staf Akademik':'Administrator'} SIMASI</p><h2 class="mt-3 text-3xl font-extrabold">Dashboard ${staff?'Staf':'Admin'}</h2><p class="mt-2 text-sm text-slate-200">Ringkasan proses verifikasi Seminar Proposal dan Seminar Hasil FMIPA.</p></div>
     <div id="adminStats" class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">${stat('Mahasiswa','statStudents')}${stat('Total Pengajuan','statRegs')}${stat('Perlu Verifikasi','statPending')}${stat('Berkas Lengkap','statComplete')}</div>
     <div class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_.7fr]"><div class="simasi-card overflow-hidden"><div class="flex items-center justify-between border-b p-5"><div><h3 class="font-extrabold">Pengajuan Terbaru</h3><p class="mt-1 text-xs text-slate-500">Pengajuan yang perlu dipantau.</p></div><button data-page="admin-registrations" class="rounded-xl border px-4 py-2 text-xs font-extrabold">Lihat Semua</button></div><div class="overflow-x-auto"><table class="simasi-table min-w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-4 text-left">Mahasiswa</th><th class="p-4 text-left">Jenis</th><th class="p-4 text-left">Status</th><th class="p-4 text-left">Tanggal</th></tr></thead><tbody id="recentRegs"><tr><td colspan="4" class="p-8 text-center text-slate-500">Memuat...</td></tr></tbody></table></div></div><div class="simasi-card p-5"><h3 class="font-extrabold">Akses Cepat</h3><div class="mt-4 grid gap-3"><button data-page="admin-registrations" class="rounded-xl bg-[#182e79] px-4 py-3 text-left text-sm font-extrabold text-white">Monitoring Pendaftar</button>${staff?'':`<button data-page="admin-announcements" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Informasi Akademik</button><button data-page="admin-import" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Import Mahasiswa</button>`}</div></div></div>`
+}
+
+export function lecturerDashboardHtml(){
+  const prodi=normalizeProdi(state.profile?.prodi||'')||'-'
+  return `<div class="simasi-hero rounded-3xl p-7 text-white"><p class="text-xs font-extrabold uppercase tracking-[.16em] text-cyan-100">Dosen SIMASI</p><h2 class="mt-3 text-3xl font-extrabold">Dashboard Dosen</h2><p class="mt-2 text-sm text-slate-200">Akun dosen dipisahkan dari Staff Akademik. Modul dosen akan tersedia pada pengembangan berikutnya.</p></div><div class="mt-6 grid gap-4 md:grid-cols-2"><div class="simasi-card p-6"><p class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-400">Program Studi</p><p class="mt-2 text-xl font-extrabold">${esc(prodi)}</p></div><div class="simasi-card p-6"><p class="text-xs font-extrabold uppercase tracking-[.14em] text-slate-400">Akses Saat Ini</p><p class="mt-2 text-xl font-extrabold">Modul Dosen Segera</p><p class="mt-2 text-sm text-slate-500">Dosen tidak memiliki akses Monitoring Pendaftar Seminar.</p></div></div>`
 }
 
 export function registrationsHtml(){

@@ -1,5 +1,9 @@
+-- Split operational Staff from Dosen role.
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check check (role in ('mahasiswa','staff','dosen','admin'));
+
 -- SIMASI staff program-study scope
--- Admin can manage all programs; Dosen/Staf only their own profile.prodi.
+-- Admin can manage all programs; Staff only their own profile.prodi. Dosen is a separate academic role.
 
 create or replace function public.can_manage_prodi(p_prodi text)
 returns boolean
@@ -15,7 +19,7 @@ as $$
       and (
         p.role = 'admin'
         or (
-          p.role = 'dosen'
+          p.role = 'staff'
           and nullif(trim(p.prodi), '') is not null
           and lower(trim(p.prodi)) = lower(trim(p_prodi))
         )
@@ -78,5 +82,13 @@ with check (
       and public.can_manage_prodi(p.prodi)
   )
 );
+
+
+-- Staff may read student rows only for their assigned program study.
+drop policy if exists "mahasiswa read own/prodi staff" on public.mahasiswa;
+create policy "mahasiswa read own/prodi staff"
+on public.mahasiswa
+for select to authenticated
+using (user_id = auth.uid() or public.is_staff() or public.can_manage_prodi(prodi));
 
 create index if not exists idx_profiles_role_prodi on public.profiles(role, prodi);

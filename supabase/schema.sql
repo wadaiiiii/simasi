@@ -6,7 +6,7 @@ create table if not exists public.profiles (
   email text,
   full_name text,
   nim text unique,
-  role text not null default 'mahasiswa' check (role in ('mahasiswa','dosen','admin')),
+  role text not null default 'mahasiswa' check (role in ('mahasiswa','staff','dosen','admin')),
   prodi text,
   created_at timestamptz not null default now()
 );
