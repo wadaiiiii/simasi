@@ -21,8 +21,9 @@ jobs:
       SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
       GOOGLE_DRIVE_ROOT_FOLDER_ID: 19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
-      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+      GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
 
     steps:
       - name: Checkout
@@ -33,8 +34,9 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'Missing SUPABASE_ACCESS_TOKEN'; exit 1; }
-          test -n "${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}" || { echo 'Missing GOOGLE_SERVICE_ACCOUNT_EMAIL'; exit 1; }
-          test -n "${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:-}" || { echo 'Missing GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY'; exit 1; }
+          test -n "${GOOGLE_OAUTH_CLIENT_ID:-}" || { echo 'Missing GOOGLE_OAUTH_CLIENT_ID'; exit 1; }
+          test -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" || { echo 'Missing GOOGLE_OAUTH_CLIENT_SECRET'; exit 1; }
+          test -n "${GOOGLE_OAUTH_REFRESH_TOKEN:-}" || { echo 'Missing GOOGLE_OAUTH_REFRESH_TOKEN'; exit 1; }
 
       - name: Install Supabase CLI
         run: npm install --global supabase@latest
@@ -56,17 +58,18 @@ jobs:
             --header "Content-Type: application/json" \
             --data-binary @/tmp/simasi-query.json
 
-      - name: Verify Google Drive service account access
-        run: node scripts/verify-google-drive-service-account.mjs
+      - name: Verify FMIPA Google Drive OAuth access
+        run: node scripts/verify-google-drive-oauth.mjs
 
-      - name: Configure Google Drive secrets in Supabase
+      - name: Configure Google Drive OAuth secrets in Supabase
         shell: bash
         run: |
           set -euo pipefail
           supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
             GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
-            GOOGLE_SERVICE_ACCOUNT_EMAIL="$GOOGLE_SERVICE_ACCOUNT_EMAIL" \
-            GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+            GOOGLE_OAUTH_CLIENT_ID="$GOOGLE_OAUTH_CLIENT_ID" \
+            GOOGLE_OAUTH_CLIENT_SECRET="$GOOGLE_OAUTH_CLIENT_SECRET" \
+            GOOGLE_OAUTH_REFRESH_TOKEN="$GOOGLE_OAUTH_REFRESH_TOKEN"
 
       - name: Deploy import-mahasiswa
         run: supabase functions deploy import-mahasiswa --project-ref "$SUPABASE_PROJECT_REF"
@@ -84,6 +87,6 @@ jobs:
         run: |
           echo '### SIMASI backend release' >> "$GITHUB_STEP_SUMMARY"
           echo '- Database migration: applied through Supabase Management API' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Google Drive: service account verified' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Google Drive: FMIPA OAuth verified against configured SIMASI folder' >> "$GITHUB_STEP_SUMMARY"
           echo '- Seminar upload: PDF only, max 2 MB' >> "$GITHUB_STEP_SUMMARY"
           echo '- Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
