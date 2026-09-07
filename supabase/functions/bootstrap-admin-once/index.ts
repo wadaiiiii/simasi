@@ -21,11 +21,16 @@ Deno.serve(async (req) => {
     const foreignAdmin = (existingAdmins.data || []).find((row) => String(row.email || '').toLowerCase() !== ADMIN_EMAIL)
     if (foreignAdmin) return reply({ ok: false, message: 'Bootstrap dikunci karena sudah ada admin lain.' }, 409)
 
-    const existing = await admin.from('profiles').select('id,email,role').eq('email', ADMIN_EMAIL).maybeSingle()
-    if (existing.error) throw new Error(`Cek profil FMIPA gagal: ${existing.error.message}`)
-    let userId = existing.data?.id || null
-    let created = false
+    let authUser = null
+    for (let page = 1; page <= 5 && !authUser; page++) {
+      const listed = await admin.auth.admin.listUsers({ page, perPage: 200 })
+      if (listed.error) throw new Error(`Cek Supabase Auth gagal: ${listed.error.message}`)
+      authUser = listed.data.users.find((user) => String(user.email || '').toLowerCase() === ADMIN_EMAIL) || null
+      if (listed.data.users.length < 200) break
+    }
 
+    let userId = authUser?.id || null
+    let created = false
     if (!userId) {
       const password = `A9!${crypto.randomUUID()}${crypto.randomUUID()}`
       const createdUser = await admin.auth.admin.createUser({
@@ -38,19 +43,28 @@ Deno.serve(async (req) => {
       if (createdUser.error || !createdUser.data.user) throw new Error(`Buat akun admin gagal: ${createdUser.error?.message || 'unknown error'}`)
       userId = createdUser.data.user.id
       created = true
+    } else {
+      const updatedAuth = await admin.auth.admin.updateUserById(userId, {
+        email_confirm: true,
+        user_metadata: { ...(authUser?.user_metadata || {}), full_name: ADMIN_NAME },
+        app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: 'admin' }
+      })
+      if (updatedAuth.error) throw new Error(`Sinkron akun Auth FMIPA gagal: ${updatedAuth.error.message}`)
     }
 
-    const profile = await admin.from('profiles').update({
+    const profileUpsert = await admin.from('profiles').upsert({
+      id: userId,
+      email: ADMIN_EMAIL,
       full_name: ADMIN_NAME,
       role: 'admin',
       must_change_password: true
-    }).eq('id', userId)
-    if (profile.error) throw new Error(`Promosi role admin gagal: ${profile.error.message}`)
+    }, { onConflict: 'id' })
+    if (profileUpsert.error) throw new Error(`Promosi role admin gagal: ${profileUpsert.error.message}`)
 
     const recovery = await publicClient.auth.resetPasswordForEmail(ADMIN_EMAIL, { redirectTo: SITE_URL })
     if (recovery.error) return reply({ ok: false, stage: 'recovery_email', admin_ready: true, message: recovery.error.message }, 500)
 
-    return reply({ ok: true, created, admin_ready: true, email_sent: true, message: 'Admin siap dan email pengaturan password telah dikirim.' })
+    return reply({ ok: true, created, reused_existing_auth_user: !created, admin_ready: true, email_sent: true, message: 'Admin siap dan email pengaturan password telah dikirim.' })
   } catch (error) {
     return reply({ ok: false, message: error instanceof Error ? error.message : String(error) }, 500)
   }
