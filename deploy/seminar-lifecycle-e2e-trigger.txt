@@ -1,0 +1,4 @@
+SIMASI seminar lifecycle E2E trigger
+Timestamp: 2026-09-08T01:05:00+08:00
+Scope: 10 uploads -> staff verification -> revision -> complete -> academic info public read
+Cleanup: temporary Auth/database identities and Drive files
