@@ -41,25 +41,29 @@ if (!tokenResponse.ok) {
 }
 
 const { access_token: token } = await tokenResponse.json()
+const params = new URLSearchParams({
+  fields: 'id,name,mimeType,driveId,capabilities(canAddChildren,canEdit)',
+  supportsAllDrives: 'true'
+})
 const folderResponse = await fetch(
-  `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,capabilities(canAddChildren,canEdit)`,
+  `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?${params}`,
   { headers: { Authorization: `Bearer ${token}` } }
 )
 
 if (!folderResponse.ok) {
   const detail = await folderResponse.text()
-  console.error(`Service account cannot access SIMASI root folder (${folderResponse.status}): ${detail.slice(0, 800)}`)
+  console.error(`Service account cannot access SIMASI Shared Drive root (${folderResponse.status}): ${detail.slice(0, 800)}`)
   process.exit(1)
 }
 
 const folder = await folderResponse.json()
 if (folder.mimeType !== 'application/vnd.google-apps.folder') {
-  console.error('GOOGLE_DRIVE_ROOT_FOLDER_ID does not point to a Google Drive folder.')
+  console.error('GOOGLE_DRIVE_ROOT_FOLDER_ID does not point to a Google Drive folder/Shared Drive root.')
   process.exit(1)
 }
 if (!folder.capabilities?.canAddChildren) {
-  console.error('Service account can see the folder but cannot add children. Share SIMASI folder as Editor.')
+  console.error('Service account can see the Shared Drive but cannot add children. Grant Content manager or sufficient write access.')
   process.exit(1)
 }
 
-console.log(`OK: service account can write only where Drive permissions allow. Root verified: ${folder.name} (${folder.id}).`)
+console.log(`OK: SIMASI Shared Drive root verified: ${folder.name} (${folder.id}), driveId=${folder.driveId || folder.id}.`)
