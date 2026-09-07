@@ -1,38 +1,439 @@
 :root {
-  --simasi-navy: #0f2747;
-  --simasi-navy-2: #163a63;
-  --simasi-emerald: #059669;
-  --simasi-emerald-dark: #047857;
-  --simasi-bg: #f7f9fc;
-  --simasi-border: #e5e7eb;
+  --brand-coral: #eb485d;
+  --brand-coral-deep: #c63f6a;
+  --brand-purple: #6d2d90;
+  --brand-cyan: #0a7bb5;
+  --brand-blue: #135295;
+  --brand-navy: #182e79;
+  --brand-royal: #2235ae;
+  --brand-violet: #491699;
+  --brand-ink: #111b46;
+  --brand-surface: #f7f9ff;
+  --brand-surface-2: #eef4ff;
+  --brand-border: #e3e8f4;
+  --brand-shadow: 0 18px 50px rgba(24,46,121,.10);
+  --brand-gradient-main: linear-gradient(135deg,#182e79 0%,#0a7bb5 46%,#491699 100%);
+  --brand-gradient-action: linear-gradient(135deg,#0a7bb5 0%,#2235ae 55%,#491699 100%);
+  --brand-gradient-warm: linear-gradient(135deg,#eb485d 0%,#c63f6a 48%,#6d2d90 100%);
 }
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; font-family: "Plus Jakarta Sans", sans-serif; background: var(--simasi-bg); color: #0f172a; }
-button,input,select,textarea { font: inherit; }
-button { transition: .18s ease; }
-button:active { transform: translateY(1px); }
-.simasi-hero { background: linear-gradient(135deg,var(--simasi-navy) 0%,#14375e 55%,#06624b 100%); }
-.simasi-card { background:#fff; border:1px solid #e5e7eb; border-radius:1.25rem; box-shadow:0 8px 28px rgba(15,39,71,.045); }
-.simasi-sidebar { background:linear-gradient(180deg,#0b1f39 0%,#0f2747 58%,#075647 100%); }
-.simasi-nav { width:100%; display:flex; align-items:center; gap:.75rem; padding:.8rem 1rem; border-radius:.85rem; font-size:.875rem; font-weight:700; color:#dbeafe; text-align:left; }
-.simasi-nav:hover { background:rgba(255,255,255,.08); color:#fff; }
-.simasi-nav.active { background:rgba(16,185,129,.18); color:#fff; box-shadow:inset 3px 0 0 #34d399; }
-.simasi-nav.disabled { opacity:.42; cursor:not-allowed; }
-.simasi-table th { font-size:.69rem; text-transform:uppercase; letter-spacing:.06em; color:#64748b; font-weight:800; white-space:nowrap; }
-.simasi-table td { vertical-align:top; }
-.simasi-pill { border-radius:999px; padding:.28rem .62rem; font-size:.68rem; font-weight:800; display:inline-flex; align-items:center; }
-.simasi-logo-frame { overflow:hidden; display:grid; place-items:center; background:#fff; }
-.simasi-logo-frame img { width:100%; height:100%; object-fit:contain; transform:scale(1.08); }
-.prodi-card.selected { border-color:#10b981 !important; background:#ecfdf5 !important; box-shadow:0 0 0 3px rgba(16,185,129,.10); }
-.prodi-card.locked { opacity:.38; cursor:not-allowed; }
-.doc-row.complete { border-color:#86efac !important; background:#f0fdf4 !important; }
-input:focus, select:focus, textarea:focus { outline:none; border-color:#10b981 !important; box-shadow:0 0 0 3px rgba(16,185,129,.10); }
-.custom-scroll::-webkit-scrollbar { width:6px; height:6px; }
-.custom-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:999px; }
-@media (max-width: 1023px) {
-  .private-shell { padding-left:0 !important; }
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background:
+    radial-gradient(circle at 9% 2%, rgba(235,72,93,.07), transparent 28rem),
+    radial-gradient(circle at 95% 12%, rgba(10,123,181,.07), transparent 30rem),
+    var(--brand-surface);
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+button,input,select,textarea { font: inherit; }
+button { transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease, background .18s ease; }
+button:active { transform: translateY(1px) scale(.99); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(34,53,174,.20);
+  outline-offset: 2px;
+}
+
+/* Brand utilities mapped over legacy emerald accents */
+.text-emerald-700 { color: var(--brand-royal) !important; }
+.text-emerald-200 { color: #d8eaff !important; }
+.bg-emerald-600,
+.bg-emerald-500 {
+  background: var(--brand-gradient-action) !important;
+  box-shadow: 0 10px 24px rgba(34,53,174,.18);
+}
+.bg-emerald-600:hover,
+.bg-emerald-500:hover,
+.hover\:bg-emerald-700:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 14px 30px rgba(34,53,174,.24);
+}
+.bg-emerald-100 { background: rgba(10,123,181,.10) !important; }
+.bg-emerald-50 { background: rgba(10,123,181,.07) !important; }
+.border-emerald-100,
+.border-emerald-200,
+.border-emerald-300 { border-color: rgba(10,123,181,.25) !important; }
+.accent-emerald-600 { accent-color: var(--brand-royal) !important; }
+
+/* Public landing */
+#app > .min-h-screen {
+  background: transparent !important;
+}
+#app > .min-h-screen > header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid rgba(24,46,121,.08) !important;
+  background: rgba(255,255,255,.88) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 7px 30px rgba(24,46,121,.045);
+}
+#app > .min-h-screen > header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg,#eb485d 0%,#6d2d90 31%,#0a7bb5 58%,#2235ae 78%,#491699 100%);
+}
+#app > .min-h-screen > header [data-action="open-login"] {
+  min-height: 44px;
+  border-radius: 999px !important;
+  background: var(--brand-gradient-action) !important;
+  box-shadow: 0 9px 24px rgba(34,53,174,.19);
+}
+#app > .min-h-screen > main {
+  width: 100%;
+}
+#app > .min-h-screen > main > .mb-7 {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem !important;
+  padding: clamp(1.5rem,4vw,2.75rem);
+  border-radius: 2rem;
+  color: white;
+  background:
+    radial-gradient(circle at 90% 15%, rgba(235,72,93,.65) 0 5.8rem, transparent 5.9rem),
+    radial-gradient(circle at 78% 118%, rgba(73,22,153,.75) 0 9rem, transparent 9.1rem),
+    var(--brand-gradient-main);
+  box-shadow: 0 24px 60px rgba(24,46,121,.18);
+}
+#app > .min-h-screen > main > .mb-7::before,
+#app > .min-h-screen > main > .mb-7::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  width: 70px;
+  height: 210px;
+  border-radius: 999px;
+  opacity: .72;
+  transform: rotate(28deg);
+}
+#app > .min-h-screen > main > .mb-7::before {
+  right: 10%;
+  top: -80px;
+  background: linear-gradient(180deg,#eb485d,#6d2d90);
+}
+#app > .min-h-screen > main > .mb-7::after {
+  right: 1.5%;
+  bottom: -125px;
+  background: linear-gradient(180deg,#0a7bb5,#182e79);
+}
+#app > .min-h-screen > main > .mb-7 > * { position: relative; z-index: 1; }
+#app > .min-h-screen > main > .mb-7 p:first-child {
+  display: inline-flex;
+  padding: .45rem .8rem;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: white !important;
+  backdrop-filter: blur(8px);
+}
+#app > .min-h-screen > main > .mb-7 h1 {
+  max-width: 720px;
+  margin-top: 1rem !important;
+  color: white !important;
+  font-size: clamp(2rem,5vw,3.75rem) !important;
+  line-height: 1.06;
+  letter-spacing: -.045em;
+}
+#app > .min-h-screen > main > .mb-7 p:last-child {
+  max-width: 650px;
+  color: rgba(255,255,255,.78) !important;
+  font-size: .94rem;
+  line-height: 1.8;
+}
+#landingAnnouncements {
+  gap: 1rem !important;
+}
+#landingAnnouncements .simasi-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 150px;
+  padding: 1.35rem !important;
+  border: 1px solid rgba(24,46,121,.08) !important;
+  background: rgba(255,255,255,.88) !important;
+  backdrop-filter: blur(10px);
+}
+#landingAnnouncements .simasi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--brand-gradient-action);
+}
+#landingAnnouncements .simasi-card:nth-child(3n+1)::before { background: var(--brand-gradient-warm); }
+#landingAnnouncements .simasi-card:nth-child(3n+2)::before { background: linear-gradient(180deg,#0a7bb5,#182e79); }
+#landingAnnouncements .simasi-card:nth-child(3n)::before { background: linear-gradient(180deg,#2235ae,#491699); }
+#app > .min-h-screen > footer {
+  border-top: 0 !important;
+  background: transparent !important;
+}
+#app > .min-h-screen > footer > div {
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(24,46,121,.08);
+  border-radius: 1.4rem;
+  background: rgba(255,255,255,.78);
+}
+
+/* Login */
+#loginModal {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(235,72,93,.22), transparent 24rem),
+    radial-gradient(circle at 88% 80%, rgba(73,22,153,.30), transparent 24rem),
+    rgba(7,16,55,.72) !important;
+}
+#loginModal > div > div {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 2rem !important;
+  box-shadow: 0 36px 90px rgba(13,23,75,.34) !important;
+}
+#loginModal > div > div::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg,#eb485d,#6d2d90,#0a7bb5,#2235ae,#491699);
+}
+#loginModal form button,
+#passwordModal form button {
+  min-height: 48px;
+  border-radius: 1rem !important;
+  background: var(--brand-gradient-action) !important;
+  box-shadow: 0 12px 30px rgba(34,53,174,.20);
+}
+#loginModal input,
+#passwordModal input {
+  min-height: 48px;
+  border-radius: 1rem !important;
+  background: #fbfcff;
+}
+
+/* Shared app shell */
+.simasi-sidebar {
+  background:
+    radial-gradient(circle at 0 100%, rgba(235,72,93,.20), transparent 17rem),
+    linear-gradient(180deg,#101f58 0%,#182e79 43%,#322487 70%,#491699 100%);
+  box-shadow: 12px 0 44px rgba(24,46,121,.16);
+}
+.simasi-nav {
+  min-height: 48px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .25rem;
+  padding: .82rem 1rem;
+  border-radius: 1rem;
+  color: rgba(255,255,255,.76);
+  font-size: .86rem;
+  font-weight: 700;
+  text-align: left;
+}
+.simasi-nav:hover {
+  background: rgba(255,255,255,.09);
+  color: #fff;
+}
+.simasi-nav.active {
+  color: #fff;
+  background: linear-gradient(90deg,rgba(235,72,93,.23),rgba(10,123,181,.16));
+  box-shadow: inset 3px 0 0 var(--brand-coral), 0 8px 22px rgba(0,0,0,.08);
+}
+.simasi-nav.disabled { opacity: .38; cursor: not-allowed; }
+.private-shell {
+  background:
+    radial-gradient(circle at 100% 0, rgba(10,123,181,.055), transparent 28rem),
+    radial-gradient(circle at 10% 95%, rgba(235,72,93,.045), transparent 24rem),
+    var(--brand-surface);
+}
+.private-shell > header {
+  min-height: 76px;
+  border-bottom: 1px solid rgba(24,46,121,.07) !important;
+  background: rgba(255,255,255,.88) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.private-shell > header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg,transparent,#eb485d,#0a7bb5,#491699,transparent);
+  opacity: .55;
+}
+.private-shell > header #pageEyebrow { color: var(--brand-royal) !important; }
+.private-shell > header .bg-\[\#0f2747\] { background: var(--brand-gradient-action) !important; }
+
+/* Main content */
+.simasi-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 94% 15%, rgba(235,72,93,.62) 0 5.5rem, transparent 5.6rem),
+    radial-gradient(circle at 78% 120%, rgba(73,22,153,.82) 0 10rem, transparent 10.1rem),
+    var(--brand-gradient-main);
+  box-shadow: 0 22px 54px rgba(24,46,121,.17);
+}
+.simasi-hero::before {
+  content: "";
+  position: absolute;
+  right: 9%;
+  top: -95px;
+  width: 72px;
+  height: 250px;
+  border-radius: 999px;
+  transform: rotate(25deg);
+  background: linear-gradient(180deg,#eb485d,#6d2d90);
+  opacity: .68;
+}
+.simasi-hero > * { position: relative; z-index: 1; }
+.simasi-card {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(24,46,121,.08);
+  border-radius: 1.35rem;
+  box-shadow: 0 10px 34px rgba(24,46,121,.065);
+}
+.simasi-card:hover {
+  border-color: rgba(34,53,174,.13);
+}
+.simasi-table th {
+  font-size: .69rem;
+  text-transform: uppercase;
+  letter-spacing: .065em;
+  color: #65708f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.simasi-table td { vertical-align: top; }
+.simasi-table tbody tr { transition: background .15s ease; }
+.simasi-table tbody tr:hover { background: rgba(10,123,181,.035); }
+.simasi-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .31rem .66rem;
+  font-size: .68rem;
+  font-weight: 800;
+}
+/* Keep semantic approved state green */
+.simasi-pill.bg-emerald-50 { background:#ecfdf5 !important; }
+.simasi-pill.text-emerald-700 { color:#047857 !important; }
+.simasi-logo-frame {
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border-color: rgba(24,46,121,.10) !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 7px 22px rgba(24,46,121,.08);
+}
+.simasi-logo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: none;
+}
+
+/* Forms */
+input, select, textarea {
+  border-color: var(--brand-border) !important;
+  background-color: rgba(255,255,255,.95);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: rgba(34,53,174,.55) !important;
+  box-shadow: 0 0 0 4px rgba(34,53,174,.10) !important;
+}
+.prodi-card {
+  min-height: 112px;
+  background: linear-gradient(180deg,#fff,#fafbff);
+}
+.prodi-card:hover:not(.locked) {
+  border-color: rgba(10,123,181,.34) !important;
+  box-shadow: 0 12px 28px rgba(24,46,121,.07);
+  transform: translateY(-2px);
+}
+.prodi-card.selected {
+  border-color: var(--brand-cyan) !important;
+  background: linear-gradient(135deg,rgba(10,123,181,.08),rgba(73,22,153,.06)) !important;
+  box-shadow: 0 0 0 4px rgba(10,123,181,.08), 0 12px 30px rgba(24,46,121,.08);
+}
+.prodi-card.locked { opacity:.38; cursor:not-allowed; }
+.doc-row.complete {
+  border-color: rgba(10,123,181,.28) !important;
+  background: linear-gradient(90deg,rgba(10,123,181,.045),rgba(34,53,174,.025)) !important;
+}
+
+.custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 999px; }
+
+/* Responsive / mobile */
+@media (max-width: 1023px) {
+  .private-shell { padding-left: 0 !important; }
+  #sidebar { width: min(86vw,310px) !important; }
+  .private-shell > header { min-height: 68px; }
+  .simasi-hero { border-radius: 1.5rem !important; }
+}
+
+@media (max-width: 767px) {
+  #app > .min-h-screen > header > div {
+    padding: .85rem 1rem !important;
+  }
+  #app > .min-h-screen > main {
+    padding: 1.25rem 1rem 2rem !important;
+  }
+  #app > .min-h-screen > main > .mb-7 {
+    padding: 1.6rem 1.3rem;
+    border-radius: 1.5rem;
+  }
+  #app > .min-h-screen > main > .mb-7 h1 {
+    font-size: clamp(1.9rem,10vw,2.65rem) !important;
+  }
+  #app > .min-h-screen > main > .mb-7::before {
+    right: -2rem;
+    opacity: .42;
+  }
+  #app > .min-h-screen > main > .mb-7::after { display: none; }
+  #landingAnnouncements { grid-template-columns: 1fr !important; }
+  #landingAnnouncements .simasi-card { min-height: 0; }
+  #app > .min-h-screen > footer > div {
+    margin: 0 1rem 1rem;
+    padding: 1rem !important;
+  }
+  #loginModal { padding: .75rem !important; }
+  #loginModal > div { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+  #loginModal > div > div { border-radius: 1.5rem !important; padding: 1.35rem !important; }
+  .private-shell > header {
+    height: auto !important;
+    padding: .75rem 1rem !important;
+  }
+  #privateMain { padding: 1rem !important; }
+  .simasi-hero { padding: 1.35rem !important; }
+  .simasi-hero h2 { font-size: 1.65rem !important; line-height: 1.15; }
+  .simasi-card { border-radius: 1.1rem; }
+  .simasi-card.p-6 { padding: 1.1rem !important; }
+  .simasi-card.p-5 { padding: 1rem !important; }
+  .simasi-table { min-width: 700px; }
+  .doc-row { padding: .9rem !important; }
+  .prodi-card { min-height: 96px; padding: 1rem !important; }
+  button, select, input { min-height: 44px; }
+}
+
+@media (max-width: 420px) {
+  #app > .min-h-screen > header .simasi-logo-frame { width: 42px !important; height: 42px !important; }
+  #app > .min-h-screen > header [data-action="open-login"] { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .simasi-hero h2 { font-size: 1.45rem !important; }
+  #privateMain { padding: .75rem !important; }
+}
+
 @media print {
   .no-print { display:none !important; }
 }
