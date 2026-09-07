@@ -20,10 +20,23 @@ export const DOCS = [
   ['pas_foto','Pas Foto 3x4 (2 lembar dalam satu PDF)']
 ]
 export const MAX_FILE = 2 * 1024 * 1024
-export const state = {user:null,profile:null,page:'landing',selectedProdi:'',importRows:[],registrations:[],docs:[],users:[],recovery:false}
+export const state = {
+  user:null,
+  profile:null,
+  page:'landing',
+  selectedProdi:'',
+  importRows:[],
+  registrations:[],
+  docs:[],
+  users:[],
+  announcements:[],
+  studentApplications:[],
+  recovery:false
+}
 
 export const role = () => String(state.profile?.role || '').toLowerCase()
 export const isAdmin = () => role() === 'admin'
+export const isStaff = () => ['dosen','admin'].includes(role())
 export const isStudent = () => role() === 'mahasiswa'
 export const normalizeNim = (v) => String(v ?? '').trim().replace(/\s+/g,'').toUpperCase()
 export const normalizeProdi = (v) => { const s=String(v??'').toLowerCase(); return PRODI.find(p=>s.includes(p.toLowerCase())) || '' }
@@ -54,8 +67,28 @@ export function logo(size='h-14 w-14'){
   return `<div class="simasi-logo-frame ${size} shrink-0 rounded-2xl border border-slate-200 bg-white"><img src="${LOGO}" alt="Logo Universitas Sulawesi Barat"></div>`
 }
 export function statusBadge(status){
-  const map={diajukan:'bg-amber-50 text-amber-700',diverifikasi:'bg-blue-50 text-blue-700',perbaikan:'bg-rose-50 text-rose-700',disetujui:'bg-emerald-50 text-emerald-700',gagal_upload:'bg-rose-50 text-rose-700'}
-  return `<span class="simasi-pill ${map[status]||'bg-slate-100 text-slate-600'}">${esc(status||'-')}</span>`
+  const value=String(status||'').toLowerCase()
+  const label={
+    diajukan:'Diajukan',
+    diverifikasi:'Diverifikasi',
+    perbaikan:'Perbaikan',
+    lengkap:'Berkas Lengkap',
+    disetujui:'Berkas Lengkap',
+    gagal_upload:'Gagal Upload',
+    terunggah:'Terunggah',
+    valid:'Valid'
+  }[value] || status || '-'
+  const map={
+    diajukan:'bg-amber-50 text-amber-700',
+    diverifikasi:'bg-blue-50 text-blue-700',
+    perbaikan:'bg-rose-50 text-rose-700',
+    lengkap:'bg-emerald-50 text-emerald-700',
+    disetujui:'bg-emerald-50 text-emerald-700',
+    gagal_upload:'bg-rose-50 text-rose-700',
+    terunggah:'bg-slate-100 text-slate-600',
+    valid:'bg-emerald-50 text-emerald-700'
+  }
+  return `<span class="simasi-pill ${map[value]||'bg-slate-100 text-slate-600'}">${esc(label)}</span>`
 }
 export async function refreshSession(){
   if(!hasSupabaseConfiguration){state.user=null;state.profile=null;return}
