@@ -1,0 +1,4 @@
+SIMASI role split trigger
+Timestamp: 2026-09-08T03:00:00+08:00
+Roles: admin | staff | dosen | mahasiswa
+Reason: operational Staff manages seminar applications; Dosen reserved for future academic modules
