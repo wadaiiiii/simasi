@@ -1,5 +1,6 @@
 import { $, $$, state, isAdmin, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE, edge } from './v4/core.js'
-import { landingHtml, privateShell, titleFor, adminDashboardHtml, registrationsHtml, importHtml, usersHtml, studentDashboardHtml, seminarHtml } from './v4/views.js'
+import { landingHtml } from './v4/landing-simple.js'
+import { privateShell, titleFor, adminDashboardHtml, registrationsHtml, importHtml, usersHtml, studentDashboardHtml, seminarHtml } from './v4/views.js'
 import { loadLandingData, loadAdminDashboard, loadRegistrations, renderRegistrationRows, showDocs, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser, createStaff, loadStudentHistory, validateSeminar, submitSeminar } from './v4/data.js'
 
 const app=$('#app')
@@ -24,8 +25,8 @@ async function renderPage(){
   if(!main)return
   if(state.page.startsWith('admin-')&&!isAdmin())state.page='student-dashboard'
   const [title,eye]=titleFor(state.page)
-  $('#pageTitle').textContent=title
-  $('#pageEyebrow').textContent=eye
+  if($('#pageTitle'))$('#pageTitle').textContent=title
+  if($('#pageEyebrow'))$('#pageEyebrow').textContent=eye
   $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===state.page))
   if(state.page==='admin-dashboard'){main.innerHTML=adminDashboardHtml();await loadAdminDashboard();return}
   if(state.page==='admin-registrations'){main.innerHTML=registrationsHtml();await loadRegistrations();return}
@@ -53,7 +54,7 @@ function openPasswordModal(recovery=false){
   const m=$('#passwordModal');if(!m)return
   m.classList.remove('hidden');m.classList.add('flex')
   $('#passwordTitle').textContent=recovery?'Atur Password Baru':'Ganti Password Pertama'
-  $('#passwordDesc').textContent=recovery?'Tautan pemulihan berhasil diverifikasi. Buat password baru minimal 8 karakter.':'Password awal harus diganti sebelum menggunakan layanan.'
+  $('#passwordDesc').textContent=recovery?'Buat password baru minimal 8 karakter.':'Password awal harus diganti sebelum menggunakan layanan.'
 }
 
 async function doLogin(){
@@ -105,7 +106,6 @@ function openCreateStaff(){
 
 async function handleClick(e){
   const el=e.target.closest('button,a');if(!el)return
-  if(el.dataset.scroll){e.preventDefault();document.getElementById(el.dataset.scroll)?.scrollIntoView({behavior:'smooth'});return}
   if(el.dataset.page){e.preventDefault();await setPage(el.dataset.page);return}
   const action=el.dataset.action
   if(action==='open-login')return openLogin()
@@ -131,11 +131,15 @@ async function handleClick(e){
   if(action==='remove-doc'){
     const input=$(`.doc-input[data-key="${el.dataset.key}"]`);if(input)input.value=''
     const row=el.closest('.doc-row')
-    row.querySelector('.file-name').textContent='Pilih PDF'
-    const badge=row.querySelector('.doc-badge')
-    badge.textContent='Belum Diisi'
-    badge.className='doc-badge self-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500'
-    el.classList.add('hidden');row.classList.remove('complete');validateSeminar();return
+    if(row){
+      row.querySelector('.file-name').textContent='Pilih PDF'
+      const badge=row.querySelector('.doc-badge')
+      badge.textContent='Belum Diisi'
+      badge.className='doc-badge self-center rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500'
+      row.querySelector('[data-action="remove-doc"]')?.classList.add('hidden')
+      row.classList.remove('complete')
+    }
+    validateSeminar();return
   }
   if(el.id==='importExecute')return doImport()
   if(el.id==='forgotPassword'){
@@ -220,9 +224,7 @@ async function init(){
     })
   }
 
-  // Public-first boot: root always shows the public landing page,
-  // even when an old authenticated session still exists in the browser.
-  // Private pages appear only after the user explicitly logs in in this visit.
+  // Tampilan root selalu publik. Session lama tidak boleh membuka dashboard otomatis.
   await renderLanding()
 }
 
