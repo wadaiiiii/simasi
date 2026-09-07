@@ -36,30 +36,39 @@ npm run dev
 
 ## Konfigurasi Supabase
 
+Untuk pengguna di Indonesia, gunakan region terdekat yang tersedia, misalnya Southeast Asia (Singapore).
+
+Urutan setup yang direkomendasikan:
+
 1. Buat project Supabase.
 2. Jalankan `supabase/schema.sql` melalui SQL Editor.
-3. Opsional: jalankan `supabase/seed.sql`.
-4. Tambahkan environment variable:
+3. Jalankan `supabase/security_patch.sql` untuk hardening hak akses.
+4. Opsional: jalankan `supabase/seed.sql` untuk data demo awal.
+5. Tambahkan environment variable ke Vercel:
 
 ```env
 VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
 ```
 
-Jangan pernah memasukkan `service_role` atau secret key ke frontend/GitHub.
+Panduan rinci tersedia di `SUPABASE_SETUP.md`.
+
+Jangan pernah memasukkan `service_role`, secret key, database password, atau access token ke frontend/GitHub.
 
 ## Role
 
-User baru otomatis mendapat role `mahasiswa`. Ubah akun staff melalui SQL:
+User baru otomatis mendapat role `mahasiswa`. Ubah akun staff hanya melalui SQL/admin tooling terpercaya:
 
 ```sql
 update public.profiles set role = 'dosen' where email = 'dosen@unsulbar.ac.id';
 update public.profiles set role = 'admin' where email = 'admin@unsulbar.ac.id';
 ```
 
+`security_patch.sql` membatasi update profil dari browser agar user biasa tidak dapat menaikkan role sendiri.
+
 ## Vercel
 
-Import repository ini ke Vercel dan tambahkan:
+Hubungkan repository GitHub `wadaiiiii/simasi` ke project Vercel SIMASI dengan production branch `main`, lalu tambahkan:
 
 ```text
 VITE_SUPABASE_URL
@@ -78,7 +87,9 @@ untuk Production dan Preview.
 - Storage seminar bersifat private.
 - Mahasiswa hanya mengakses data miliknya.
 - Dosen/Admin memiliki akses sesuai role.
-- Dashboard memakai RPC agregat agar data mahasiswa tidak dibuka ke publik.
+- Role tidak dapat dinaikkan sendiri dari browser setelah `security_patch.sql` dijalankan.
+- Catatan dosen dan status approval logbook dilindungi dari update mahasiswa.
+- Dashboard memakai RPC agregat agar data mahasiswa tidak dibuka sebagai tabel publik.
 
 ## Mode Demo
 
