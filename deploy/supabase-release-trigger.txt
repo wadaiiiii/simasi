@@ -1,7 +1,5 @@
 SIMASI Supabase production release trigger
-Timestamp: 2026-09-08T01:22:00+08:00
-Database migration: split academic information RLS policies for anon/authenticated/staff
-Google Drive OAuth FMIPA: enabled
-Drive root: 19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
-Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive, preview-seminar-drive
-Reason: public landing query failed because anon policy evaluated protected is_staff() helper
+Timestamp: 2026-09-08T02:30:00+08:00
+Database migration: staff program-study scoped RLS
+Edge Functions: admin-users + preview-seminar-drive + existing seminar functions
+Reason: Dosen/Staf hanya boleh mengelola pengajuan mahasiswa pada program studinya sendiri
