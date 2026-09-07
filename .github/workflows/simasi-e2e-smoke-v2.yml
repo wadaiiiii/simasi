@@ -1,0 +1,27 @@
+name: SIMASI Backend E2E Smoke v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/e2e-smoke-v2-trigger.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simasi-e2e-smoke-v2
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
+      SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --global supabase@latest
+      - name: Run end-to-end smoke
+        run: node scripts/simasi-e2e-smoke.mjs
