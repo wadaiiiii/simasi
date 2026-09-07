@@ -55,6 +55,13 @@ jobs:
           set -euo pipefail
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/student_import_drive.sql
 
+      - name: Verify SIMASI Google Drive folder permission
+        if: ${{ inputs.configure_google_drive }}
+        env:
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+        run: node scripts/verify-google-drive-service-account.mjs
+
       - name: Configure Google Drive service account
         if: ${{ inputs.configure_google_drive }}
         shell: bash
