@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KuliahController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\SeminarController;
 use App\Http\Controllers\SkripsiController;
+use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -27,4 +29,18 @@ Route::middleware('simasi.auth')->group(function () {
     Route::get('/logbook', [LogbookController::class, 'index'])->name('logbook.index');
     Route::post('/logbook', [LogbookController::class, 'store'])->name('logbook.store');
     Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
+
+    Route::middleware('role:dosen,admin')->prefix('staf')->name('staff.')->group(function () {
+        Route::get('/', [StaffController::class, 'index'])->name('index');
+        Route::patch('/skripsi/{id}', [StaffController::class, 'updateSkripsi'])->name('skripsi.update');
+        Route::patch('/seminar/{id}', [StaffController::class, 'updateSeminar'])->name('seminar.update');
+        Route::post('/logbook/{id}/review', [StaffController::class, 'reviewLogbook'])->name('logbook.review');
+        Route::post('/nilai', [StaffController::class, 'saveNilai'])->name('nilai.save');
+    });
+
+    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/pengguna', [AdminController::class, 'users'])->name('users');
+        Route::post('/pengguna/{userId}/role', [AdminController::class, 'setRole'])->name('users.role');
+        Route::post('/pengguna/{userId}/tautkan-mahasiswa', [AdminController::class, 'linkStudent'])->name('users.link');
+    });
 });
