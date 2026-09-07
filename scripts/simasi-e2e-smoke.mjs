@@ -51,7 +51,6 @@ try {
   cli(['secrets', 'set', '--project-ref', ref, `SIMASI_E2E_TOKEN=${e2eToken}`])
   cli(['functions', 'deploy', 'e2e-test-helper', '--project-ref', ref, '--no-verify-jwt'])
 
-  // Bersihkan residu percobaan lama yang sempat berhenti sebelum student_user_id tersimpan.
   try { await helper('cleanup', { nim: 'T34114638797' }) } catch {}
 
   const admin = await helper('create_admin', { email: adminEmail, password: adminPassword })
@@ -71,7 +70,7 @@ try {
 
   const student = await helper('sign_in', { email: studentEmail, password: testNim })
   studentUserId = student.user_id
-  const studentToken = student.access_token
+  let studentToken = student.access_token
   console.log(`::add-mask::${studentToken}`)
   console.log('PASS login NIM/password awal NIM')
 
@@ -82,6 +81,12 @@ try {
   })
   if (!changed.ok) throw new Error('Ganti password awal gagal')
   console.log('PASS wajib ganti password')
+
+  const refreshed = await helper('sign_in', { email: studentEmail, password: newStudentPassword })
+  studentUserId = refreshed.user_id
+  studentToken = refreshed.access_token
+  console.log(`::add-mask::${studentToken}`)
+  console.log('PASS login ulang setelah ganti password')
 
   const registration = await jsonFetch(`${url}/rest/v1/pendaftaran_seminar`, {
     method: 'POST',
