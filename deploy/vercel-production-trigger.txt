@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: SIMASI brand-v8 single-render landing + mobile-first brand palette
+Frontend: SIMASI complete seminar lifecycle + student monitor + staff verification + academic information management + animated landing
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T00:18:00+08:00
-Reason: remove legacy enhancements dynamic import that was overwriting app-v5 landing after first paint
+Triggered: 2026-09-08T00:55:00+08:00
+Reason: complete one full seminar process from upload/preview through revision and final complete verification
