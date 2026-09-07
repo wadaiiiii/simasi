@@ -1,12 +1,37 @@
 html { scroll-behavior: smooth; }
-body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+:root {
+  --simasi-ink: #4c4860;
+  --simasi-ink-2: #625d77;
+  --simasi-lavender: #80759e;
+  --simasi-lavender-soft: #f1eef8;
+  --simasi-sage: #819b91;
+  --simasi-sage-soft: #edf4f1;
+  --simasi-bg: #f7f6fa;
+}
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--simasi-bg) !important; }
 .page-view { display: none; }
 .page-view.active { display: block; animation: fadePage .24s ease; }
 @keyframes fadePage { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .modal-backdrop { backdrop-filter: blur(5px); }
-.sidebar-link.active { background: rgba(255,255,255,.12); color: white; }
-.prodi-card.selected { border-color: #059669; background: #ecfdf5; box-shadow: 0 0 0 3px rgba(5,150,105,.10); }
-.document-row.complete { border-color: #a7f3d0; background: #f0fdf4; }
+#sidebar { background: linear-gradient(180deg, #49465c 0%, #5c5870 55%, #687c76 100%) !important; }
+header { background: rgba(255,255,255,.92) !important; }
+#page-dashboard > .relative,
+#page-seminar > div:first-child,
+#page-login > div > div:first-child,
+.simasi-soft-hero { background: linear-gradient(135deg, #5b5770 0%, #77708f 50%, #7f968e 100%) !important; }
+.bg-emerald-600, .bg-emerald-500 { background-color: #81759e !important; }
+.text-emerald-700, .text-emerald-600, .text-emerald-300 { color: #756b91 !important; }
+.bg-emerald-50 { background-color: #f1eef8 !important; }
+.border-emerald-200 { border-color: #ddd7eb !important; }
+.sidebar-link.active { background: rgba(255,255,255,.14); color: white; }
+.sidebar-link:hover { background: rgba(255,255,255,.09); }
+.simasi-disabled-menu { opacity: .55; cursor: not-allowed; }
+.prodi-card { transition: .2s ease; background: #fff; }
+.prodi-card:hover { transform: translateY(-1px); border-color: #cfc7df; background: #faf9fd; }
+.prodi-card.selected { border-color: #8a7fa5 !important; background: #f3f0f8 !important; box-shadow: 0 0 0 3px rgba(128,117,158,.10); }
+.doc-row.complete { border-color: #c9ded6 !important; background: #f4f8f6 !important; }
+button, input, select, textarea { transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .18s ease; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #9c91b8 !important; box-shadow: 0 0 0 3px rgba(128,117,158,.10); }
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 @media print {
