@@ -3,6 +3,7 @@ import { corsHeaders, getContext, json } from '../_shared/auth.ts'
 
 const SITE_URL = 'https://simasimipa.vercel.app'
 const ALLOWED_ROLES = ['mahasiswa', 'dosen', 'admin']
+const ALLOWED_PRODI = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']
 
 function readNamedKey(jsonName: string, legacyName: string): string {
   const raw = Deno.env.get(jsonName)
@@ -95,7 +96,9 @@ Deno.serve(async (req) => {
       const email = String(body.email || '').trim().toLowerCase()
       const fullName = String(body.full_name || '').trim()
       const requestedRole = String(body.role || 'dosen')
+      const requestedProdi = requestedRole === 'dosen' ? String(body.prodi || '').trim() : ''
       if (!email.includes('@') || !fullName || !['dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)
+      if (requestedRole === 'dosen' && !ALLOWED_PRODI.includes(requestedProdi)) return json({ ok: false, message: 'Program studi staf wajib dipilih dan harus valid.' }, 400)
 
       let authUser = await findAuthUserByEmail(admin, email)
       let userId = authUser?.id || null
@@ -105,8 +108,8 @@ Deno.serve(async (req) => {
           email,
           password: randomPassword,
           email_confirm: true,
-          user_metadata: { full_name: fullName },
-          app_metadata: { simasi_account_type: requestedRole }
+          user_metadata: { full_name: fullName, prodi: requestedProdi || null },
+          app_metadata: { simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }
         })
         if (created.error || !created.data.user) throw created.error || new Error('Akun staf gagal dibuat.')
         userId = created.data.user.id
@@ -114,8 +117,8 @@ Deno.serve(async (req) => {
       } else {
         const authUpdate = await admin.auth.admin.updateUserById(userId, {
           email_confirm: true,
-          user_metadata: { ...(authUser?.user_metadata || {}), full_name: fullName },
-          app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: requestedRole }
+          user_metadata: { ...(authUser?.user_metadata || {}), full_name: fullName, prodi: requestedProdi || null },
+          app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }
         })
         if (authUpdate.error) throw authUpdate.error
       }
@@ -125,13 +128,14 @@ Deno.serve(async (req) => {
         email,
         full_name: fullName,
         role: requestedRole,
+        prodi: requestedRole === 'dosen' ? requestedProdi : null,
         must_change_password: true
       }, { onConflict: 'id' })
       if (profileWrite.error) throw profileWrite.error
 
       const reset = await publicClient.auth.resetPasswordForEmail(email, { redirectTo: SITE_URL })
       if (reset.error) throw reset.error
-      return json({ ok: true, user_id: userId, message: 'Akun staf siap dan email pengaturan password telah dikirim.' })
+      return json({ ok: true, user_id: userId, prodi: requestedProdi || null, message: 'Akun staf siap dan email pengaturan password telah dikirim.' })
     }
 
     return json({ ok: false, message: 'Aksi tidak dikenali.' }, 400)
