@@ -1,0 +1,41 @@
+name: SIMASI Role Split Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/role-split-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply role split patch
+        run: python3 scripts/patch-role-split.py
+
+      - name: Syntax checks
+        run: |
+          node --check src/v4/core.js
+          node --check src/v5/views.js
+          node --check src/app-v5.js
+          node --check src/v4/data.js
+
+      - name: Commit role split
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'SIMASI Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/v4/core.js src/v5/views.js src/app-v5.js src/v4/data.js src/v4/views.js \
+            supabase/schema.sql supabase/staff_prodi_scope.sql \
+            supabase/functions/admin-users/index.ts supabase/functions/preview-seminar-drive/index.ts \
+            deploy/role-split-applied.txt
+          git commit -m 'feat: split staff and lecturer roles'
+          git push origin main
