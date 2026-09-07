@@ -1,3 +1,3 @@
 SIMASI academic info visibility audit
-Triggered: 2026-09-08T01:20:00+08:00
-Reason: compare publishable and legacy anon Data API access for landing academic information
+Triggered: 2026-09-08T01:24:00+08:00
+Reason: verify active academic information is public after splitting anon and staff RLS policies
