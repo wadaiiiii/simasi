@@ -1,0 +1,5 @@
+SIMASI Supabase production release trigger
+Timestamp: 2026-09-07T17:11:00+08:00
+Database migration: enabled
+Google Drive service account: enabled
+Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive
