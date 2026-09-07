@@ -20,6 +20,11 @@ function readNamedKey(jsonName: string, legacyName: string): string {
   return legacy
 }
 
+function createTemporaryPassword(): string {
+  const value = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
+  return `SIMASI@${String(value).padStart(6, '0')}`
+}
+
 async function findAuthUserByEmail(admin: any, email: string) {
   for (let page = 1; page <= 10; page++) {
     const result = await admin.auth.admin.listUsers({ page, perPage: 200 })
@@ -100,13 +105,14 @@ Deno.serve(async (req) => {
       if (!email.includes('@') || !fullName || !['dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)
       if (requestedRole === 'dosen' && !ALLOWED_PRODI.includes(requestedProdi)) return json({ ok: false, message: 'Program studi staf wajib dipilih dan harus valid.' }, 400)
 
+      const temporaryPassword = createTemporaryPassword()
       let authUser = await findAuthUserByEmail(admin, email)
       let userId = authUser?.id || null
+
       if (!userId) {
-        const randomPassword = `A9!${crypto.randomUUID()}`
         const created = await admin.auth.admin.createUser({
           email,
-          password: randomPassword,
+          password: temporaryPassword,
           email_confirm: true,
           user_metadata: { full_name: fullName, prodi: requestedProdi || null },
           app_metadata: { simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }
@@ -116,6 +122,7 @@ Deno.serve(async (req) => {
         authUser = created.data.user
       } else {
         const authUpdate = await admin.auth.admin.updateUserById(userId, {
+          password: temporaryPassword,
           email_confirm: true,
           user_metadata: { ...(authUser?.user_metadata || {}), full_name: fullName, prodi: requestedProdi || null },
           app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }
@@ -135,7 +142,16 @@ Deno.serve(async (req) => {
 
       const reset = await publicClient.auth.resetPasswordForEmail(email, { redirectTo: SITE_URL })
       if (reset.error) throw reset.error
-      return json({ ok: true, user_id: userId, prodi: requestedProdi || null, message: 'Akun staf siap dan email pengaturan password telah dikirim.' })
+
+      return json({
+        ok: true,
+        user_id: userId,
+        email,
+        prodi: requestedProdi || null,
+        temporary_password: temporaryPassword,
+        must_change_password: true,
+        message: 'Akun staf siap. Password sementara hanya ditampilkan satu kali kepada admin.'
+      })
     }
 
     return json({ ok: false, message: 'Aksi tidak dikenali.' }, 400)
