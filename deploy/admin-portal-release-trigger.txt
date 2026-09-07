@@ -1,0 +1,6 @@
+SIMASI admin portal backend release
+2026-09-07T21:15:00+08:00
+- align Seminar Proposal / Seminar Hasil constraint
+- deploy fixed import-mahasiswa
+- deploy upload-seminar-drive
+- deploy admin-users
