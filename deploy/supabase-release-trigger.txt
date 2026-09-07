@@ -1,7 +1,7 @@
 SIMASI Supabase production release trigger
-Timestamp: 2026-09-08T01:35:00+08:00
-Database migration: student import + admin portal + seminar lifecycle
+Timestamp: 2026-09-08T01:12:00+08:00
+Database migration: public academic information read grant + admin portal + seminar lifecycle
 Google Drive OAuth FMIPA: enabled
 Drive root: 19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
 Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive, preview-seminar-drive
-Reason: secure authenticated preview of restricted Google Drive seminar PDFs
+Reason: active Informasi Akademik exists in backend but public landing receives HTTP 401
