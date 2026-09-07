@@ -1,0 +1,24 @@
+name: Patch E2E Student Email Env (One Shot)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/patch-e2e-env-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch workflow
+        run: |
+          sed -i 's/^          STUDENT_EMAIL="/          export STUDENT_EMAIL="/' .github/workflows/simasi-e2e-smoke-once.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .github/workflows/simasi-e2e-smoke-once.yml
+          git diff --cached --quiet || git commit -m 'test: export student email in E2E smoke'
+          git push
