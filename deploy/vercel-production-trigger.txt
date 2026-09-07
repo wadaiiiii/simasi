@@ -1,5 +1,5 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
 Frontend: focused Seminar Proposal/Seminar Hasil + admin import + soft UI
-Auto-discover project by canonical domain
-Triggered: 2026-09-07T20:55:00+08:00
+Deployment path: Vercel REST API from built dist
+Triggered: 2026-09-07T21:00:00+08:00
