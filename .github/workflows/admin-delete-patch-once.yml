@@ -1,0 +1,31 @@
+name: SIMASI Admin Delete Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/admin-delete-patch-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply admin delete patch
+        run: python3 scripts/patch-admin-delete.py
+      - name: Syntax checks
+        run: |
+          node --check src/app-v5.js
+          node --check src/v4/data.js
+          node --check src/v5/workflow.js
+      - name: Commit patch
+        run: |
+          git config user.name "SIMASI Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/app-v5.js src/v4/data.js src/v5/workflow.js supabase/functions/admin-users/index.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add admin delete account and seminar actions"
+          git push origin main
