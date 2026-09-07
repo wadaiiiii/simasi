@@ -72,7 +72,7 @@ jobs:
           }
           echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
           echo "VERCEL_PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
-          echo "Resolved Vercel project: $PROJECT_NAME"
+          echo "Resolved Vercel project: $PROJECT_NAME ($PROJECT_ID)"
           rm -f /tmp/projects.json /tmp/domains.json
 
       - name: Resolve Supabase publishable key securely
@@ -99,8 +99,11 @@ jobs:
 
       - name: Syntax check focused frontend
         run: |
-          node --check src/main.js
-          node --check src/enhancements.js
+          node --check src/app-v5.js
+          node --check src/v4/core.js
+          node --check src/v4/landing-simple.js
+          node --check src/v4/views.js
+          node --check src/v4/data.js
           node --check src/supabase.js
 
       - name: Build static production bundle
@@ -174,6 +177,7 @@ jobs:
           echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
           echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "Created deployment: $DEPLOYMENT_ID"
+          echo "Created URL: https://$DEPLOYMENT_URL"
 
       - name: Wait until deployment ready
         shell: bash
@@ -188,11 +192,6 @@ jobs:
             STATE=$(jq -r '.readyState // .state // "UNKNOWN"' /tmp/deployment-status.json)
             echo "Deployment state: $STATE"
             if [ "$STATE" = "READY" ]; then
-              URL=$(jq -r '.url // empty' /tmp/deployment-status.json)
-              echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
-              echo "- Project: $VERCEL_PROJECT_NAME" >> "$GITHUB_STEP_SUMMARY"
-              echo "- Deployment: https://$URL" >> "$GITHUB_STEP_SUMMARY"
-              echo '- Canonical domain: https://simasimipa.vercel.app' >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
@@ -203,3 +202,52 @@ jobs:
           done
           echo 'Timeout menunggu deployment READY'
           exit 1
+
+      - name: Assign canonical alias to latest deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID='${{ steps.deploy.outputs.deployment_id }}'
+          HTTP=$(curl --silent --show-error -o /tmp/alias.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v2/deployments/${ID}/aliases?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data "{\"alias\":\"${CANONICAL_DOMAIN}\",\"redirect\":null}")
+          echo "Assign alias API: HTTP ${HTTP}"
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "201" ]; then
+            echo "Alias error: $(jq -r '.error.message // .message // "unknown error"' /tmp/alias.json)"
+            cat /tmp/alias.json
+            exit 1
+          fi
+          echo "Alias assigned: ${CANONICAL_DOMAIN} -> ${ID}"
+
+      - name: Verify canonical alias and content
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID='${{ steps.deploy.outputs.deployment_id }}'
+          URL='${{ steps.deploy.outputs.deployment_url }}'
+
+          HTTP=$(curl --silent --show-error -o /tmp/alias-check.json -w '%{http_code}' \
+            "https://api.vercel.com/v4/aliases/${CANONICAL_DOMAIN}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          echo "Alias verify API: HTTP ${HTTP}"
+          test "$HTTP" = "200" || { cat /tmp/alias-check.json; exit 1; }
+          ALIAS_DEPLOYMENT=$(jq -r '.deploymentId // .deployment.id // empty' /tmp/alias-check.json)
+          if [ -n "$ALIAS_DEPLOYMENT" ] && [ "$ALIAS_DEPLOYMENT" != "$ID" ]; then
+            echo "Alias masih menunjuk deployment lain: $ALIAS_DEPLOYMENT"
+            exit 1
+          fi
+
+          sleep 2
+          curl --fail --silent --show-error "https://${CANONICAL_DOMAIN}/?release=${GITHUB_SHA}" -o /tmp/canonical.html
+          curl --fail --silent --show-error "https://${URL}/?release=${GITHUB_SHA}" -o /tmp/deployment.html
+          grep -q 'SIMASI' /tmp/canonical.html || { echo 'Canonical page tidak memuat SIMASI'; exit 1; }
+          echo "Canonical SHA256: $(sha256sum /tmp/canonical.html | cut -d' ' -f1)"
+          echo "Deployment SHA256: $(sha256sum /tmp/deployment.html | cut -d' ' -f1)"
+
+          echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Project: $VERCEL_PROJECT_NAME" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment: https://$URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Canonical: https://${CANONICAL_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Alias verified to deployment: $ID" >> "$GITHUB_STEP_SUMMARY"
