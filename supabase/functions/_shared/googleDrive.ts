@@ -24,8 +24,6 @@ async function tokenFromServiceAccount() {
   const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
   const payload = b64url(JSON.stringify({
     iss: email,
-    // Scope Drive penuh hanya berlaku untuk resource yang memang dapat diakses
-    // oleh service account. Folder lain milik FMIPA tidak otomatis terbuka.
     scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
@@ -64,7 +62,11 @@ function q(value: string) {
 }
 
 export async function verifyFolderAccess(token: string, folderId: string) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,capabilities(canAddChildren,canEdit)`, {
+  const params = new URLSearchParams({
+    fields: 'id,name,mimeType,driveId,capabilities(canAddChildren,canEdit)',
+    supportsAllDrives: 'true'
+  })
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   if (!res.ok) throw new Error(`Google Drive root folder access failed (${res.status})`)
@@ -76,19 +78,29 @@ export async function verifyFolderAccess(token: string, folderId: string) {
 
 export async function findOrCreateFolder(token: string, name: string, parentId: string) {
   const query = `mimeType='application/vnd.google-apps.folder' and name='${q(name)}' and '${q(parentId)}' in parents and trashed=false`
-  const search = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=10`, {
+  const params = new URLSearchParams({
+    q: query,
+    fields: 'files(id,name,driveId)',
+    pageSize: '10',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true'
+  })
+  const search = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   if (!search.ok) throw new Error(`Google Drive folder lookup failed (${search.status})`)
   const found = await search.json()
   if (found.files?.[0]?.id) return found.files[0].id as string
 
-  const create = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+  const create = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name,driveId&supportsAllDrives=true', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
   })
-  if (!create.ok) throw new Error(`Google Drive folder creation failed (${create.status})`)
+  if (!create.ok) {
+    const detail = await create.text()
+    throw new Error(`Google Drive folder creation failed (${create.status}): ${detail.slice(0, 220)}`)
+  }
   const folder = await create.json()
   return folder.id as string
 }
@@ -105,7 +117,7 @@ export async function uploadFile(token: string, folderId: string, file: File, fi
   body.set(bodyBytes, prefix.length)
   body.set(suffix, prefix.length + bodyBytes.length)
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,parents', {
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,parents,driveId&supportsAllDrives=true', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
