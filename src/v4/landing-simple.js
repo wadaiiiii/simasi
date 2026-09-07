@@ -40,7 +40,7 @@ export function landingHtml(){
         <div class="relative mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-5 sm:py-14 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:px-8 lg:py-16">
           <div>
             <span class="inline-flex rounded-full border border-[#0a7bb5]/15 bg-[#0a7bb5]/5 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#0a7bb5] sm:text-[11px]">Portal Akademik FMIPA</span>
-            <h1 class="mt-5 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">Seminar Proposal & Seminar Hasil dalam <span class="bg-[linear-gradient(90deg,#0a7bb5,#2235ae,#491699)] bg-clip-text text-transparent">satu layanan</span>.</h1>
+            <h1 class="mt-5 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">Sistem Informasi Manajemen <span class="bg-[linear-gradient(90deg,#0a7bb5,#2235ae,#491699)] bg-clip-text text-transparent">Kuliah & Skripsi</span></h1>
             <p class="mt-4 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">Akses informasi akademik dan layanan seminar FMIPA Universitas Sulawesi Barat secara lebih ringkas dan terintegrasi.</p>
             <div class="mt-6 flex flex-col gap-3 sm:flex-row">
               <button data-action="open-login" class="rounded-2xl bg-[linear-gradient(90deg,#0a7bb5_0%,#2235ae_58%,#491699_100%)] px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-[#2235ae]/20 transition hover:-translate-y-0.5">Masuk ke SIMASI</button>
@@ -72,7 +72,7 @@ export function landingHtml(){
       </section>
     </main>
 
-    <footer class="border-t border-slate-200 bg-white"><div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-8"><span>SIMASI • FMIPA Universitas Sulawesi Barat</span><button data-action="open-login" class="font-extrabold text-[#2235ae]">Masuk ke sistem</button></div></footer>
+    <footer class="border-t border-slate-200 bg-white"><div class="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-6 text-center text-xs text-slate-500 sm:flex-row sm:justify-between sm:px-5 sm:text-left lg:px-8"><span>SIMASI • FMIPA Universitas Sulawesi Barat</span><button data-action="open-login" class="font-extrabold text-[#2235ae]">Masuk ke sistem</button></div></footer>
     ${loginModal()}
   </div>`
 }
