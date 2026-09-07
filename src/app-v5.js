@@ -121,15 +121,23 @@ function openCreateStaff(){
   document.body.insertAdjacentHTML('beforeend',`<div id="staffModal" class="fixed inset-0 z-[950] flex items-center justify-center bg-slate-950/60 p-4"><div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><div><h3 class="text-xl font-extrabold">Tambah Staf</h3><p class="mt-1 text-xs leading-5 text-slate-500">Staf hanya dapat mengelola pengajuan mahasiswa pada program studinya.</p></div><button data-action="close-staff" class="rounded-xl border px-3 py-2">✕</button></div><form id="staffForm" class="mt-5 space-y-4"><input id="staffName" required class="w-full rounded-xl border px-4 py-3" placeholder="Nama lengkap"><input id="staffEmail" type="email" required class="w-full rounded-xl border px-4 py-3" placeholder="Email"><div><label class="mb-2 block text-xs font-bold text-slate-600">Peran</label><select id="staffRole" class="w-full rounded-xl border px-4 py-3"><option value="dosen">Dosen/Staf</option><option value="admin">Admin</option></select></div><div id="staffProdiField"><label class="mb-2 block text-xs font-bold text-slate-600">Program Studi</label><select id="staffProdi" required class="w-full rounded-xl border px-4 py-3"><option value="">Pilih Program Studi</option>${PRODI.map(p=>`<option value="${p}">${p}</option>`).join('')}</select><p class="mt-2 text-[11px] leading-5 text-slate-500">Monitoring, verifikasi, dan preview berkas akan dibatasi ke Prodi ini.</p></div><button class="w-full rounded-xl bg-[linear-gradient(90deg,#0a84bd,#2636b7,#4d1daf)] px-5 py-3 font-extrabold text-white">Buat Akun & Kirim Email</button></form></div></div>`)
 }
 
+function showStaffCredential(data,name,role,prodi=''){
+  const email=String(data?.email||'')
+  const password=String(data?.temporary_password||'')
+  document.body.insertAdjacentHTML('beforeend',`<div id="staffCredentialModal" class="fixed inset-0 z-[980] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><div><p class="text-xs font-extrabold uppercase tracking-[.16em] text-blue-700">Akun Berhasil Dibuat</p><h3 class="mt-2 text-2xl font-extrabold">Kredensial Login Pertama</h3></div><button data-action="close-staff-credential" class="rounded-xl border px-3 py-2">✕</button></div><div class="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><b>Simpan sekarang.</b> Password sementara hanya ditampilkan satu kali. Staf wajib menggantinya setelah login pertama.</div><div id="staffCredentialText" class="mt-5 space-y-3 rounded-2xl bg-slate-50 p-5"><div><p class="text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Nama</p><p class="mt-1 font-bold">${name}</p></div><div><p class="text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Email / Username</p><p id="staffCredentialEmail" class="mt-1 break-all font-mono font-bold">${email}</p></div><div><p class="text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Password Awal</p><p id="staffTempPassword" class="mt-1 select-all font-mono text-xl font-extrabold text-[#2636b7]">${password}</p></div>${role==='dosen'?`<div><p class="text-[10px] font-extrabold uppercase tracking-[.14em] text-slate-400">Program Studi</p><p class="mt-1 font-bold">${prodi}</p></div>`:''}</div><div class="mt-5 grid gap-3 sm:grid-cols-2"><button data-action="copy-staff-credential" class="rounded-xl bg-[linear-gradient(90deg,#0a84bd,#2636b7,#4d1daf)] px-4 py-3 font-extrabold text-white">Salin Kredensial</button><button data-action="close-staff-credential" class="rounded-xl border px-4 py-3 font-extrabold">Sudah Disimpan</button></div><p class="mt-4 text-center text-[11px] leading-5 text-slate-500">Email pemulihan juga dikirim sebagai jalur cadangan. Password sementara tidak disimpan sebagai teks di database SIMASI.</p></div></div>`)
+}
+
 async function createStaffScoped(name,email,role,prodi=''){
   loading(true,'Membuat akun staf...')
   try{
     const {data,error}=await supabaseClient.functions.invoke('admin-users',{body:{action:'create_staff',full_name:name,email,role,prodi}})
     if(error){let msg=error.message;try{const res=error.context;if(res?.clone){const j=await res.clone().json();msg=j?.message||j?.error||msg}}catch{}throw new Error(msg||'Gagal membuat staf.')}
     if(data?.ok===false)throw new Error(data.message||'Gagal membuat staf.')
+    if(!data?.temporary_password)throw new Error('Password sementara tidak diterima dari backend.')
     $('#staffModal')?.remove()
-    toast(role==='dosen'?`Akun staf ${prodi} dibuat dan email pengaturan password dikirim.`:'Akun admin dibuat dan email pengaturan password dikirim.')
     await loadUsers()
+    showStaffCredential(data,name,role,prodi)
+    toast('Akun berhasil dibuat. Simpan password sementara sebelum menutup jendela ini.')
   }catch(e){toast(e.message||'Gagal membuat staf.','err')}finally{loading(false)}
 }
 
@@ -160,6 +168,15 @@ async function handleClick(e){
   if(action==='download-template')return downloadTemplate()
   if(action==='open-create-staff')return openCreateStaff()
   if(action==='close-staff')return $('#staffModal')?.remove()
+  if(action==='close-staff-credential')return $('#staffCredentialModal')?.remove()
+  if(action==='copy-staff-credential'){
+    const email=$('#staffCredentialEmail')?.textContent?.trim()||'',password=$('#staffTempPassword')?.textContent?.trim()||''
+    const text=`Email: ${email}
+Password awal: ${password}
+Login: https://simasimipa.vercel.app`
+    try{await navigator.clipboard.writeText(text);toast('Kredensial berhasil disalin.')}catch{toast('Gagal menyalin otomatis. Silakan salin manual.','info')}
+    return
+  }
   if(action==='reset-user')return resetUser(el.dataset.email)
   if(action==='new-announcement'||action==='reset-announcement')return resetAnnouncementForm()
   if(action==='edit-announcement')return editAnnouncement(el.dataset.id)
