@@ -1,60 +1,39 @@
 const encoder = new TextEncoder()
 
-function b64url(bytes: Uint8Array | string) {
-  const raw = typeof bytes === 'string' ? encoder.encode(bytes) : bytes
-  let binary = ''
-  for (const byte of raw) binary += String.fromCharCode(byte)
-  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/g, '')
-}
+async function tokenFromOAuthRefreshToken() {
+  const clientId = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')
+  const clientSecret = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')
+  const refreshToken = Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')
 
-function pemToArrayBuffer(pem: string) {
-  const clean = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '')
-  const binary = atob(clean)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer
-}
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('SIMASI Google Drive OAuth is not configured')
+  }
 
-async function tokenFromServiceAccount() {
-  const email = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')
-  const privateKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')?.replaceAll('\\n', '\n')
-  if (!email || !privateKey) throw new Error('SIMASI Google Drive service account is not configured')
-
-  const now = Math.floor(Date.now() / 1000)
-  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-  const payload = b64url(JSON.stringify({
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  }))
-  const unsigned = `${header}.${payload}`
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    pemToArrayBuffer(privateKey),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, encoder.encode(unsigned)))
-  const assertion = `${unsigned}.${b64url(signature)}`
   const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-    assertion
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: refreshToken,
+    grant_type: 'refresh_token'
   })
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
   })
-  if (!res.ok) throw new Error(`Google service account token failed (${res.status})`)
+
+  if (!res.ok) {
+    const detail = await res.text()
+    throw new Error(`Google OAuth token refresh failed (${res.status}): ${detail.slice(0, 220)}`)
+  }
+
   const data = await res.json()
+  if (!data.access_token) throw new Error('Google OAuth did not return an access token')
   return data.access_token as string
 }
 
 export async function getDriveToken() {
-  return await tokenFromServiceAccount()
+  return await tokenFromOAuthRefreshToken()
 }
 
 function q(value: string) {
@@ -69,10 +48,13 @@ export async function verifyFolderAccess(token: string, folderId: string) {
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
-  if (!res.ok) throw new Error(`Google Drive root folder access failed (${res.status})`)
+  if (!res.ok) {
+    const detail = await res.text()
+    throw new Error(`Google Drive root folder access failed (${res.status}): ${detail.slice(0, 220)}`)
+  }
   const folder = await res.json()
   if (folder.mimeType !== 'application/vnd.google-apps.folder') throw new Error('Configured Drive root is not a folder')
-  if (!folder.capabilities?.canAddChildren) throw new Error('SIMASI service account does not have permission to add files to the Drive root folder')
+  if (!folder.capabilities?.canAddChildren) throw new Error('FMIPA OAuth account cannot add files to the configured SIMASI root folder')
   return folder
 }
 
@@ -88,7 +70,10 @@ export async function findOrCreateFolder(token: string, name: string, parentId: 
   const search = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
-  if (!search.ok) throw new Error(`Google Drive folder lookup failed (${search.status})`)
+  if (!search.ok) {
+    const detail = await search.text()
+    throw new Error(`Google Drive folder lookup failed (${search.status}): ${detail.slice(0, 220)}`)
+  }
   const found = await search.json()
   if (found.files?.[0]?.id) return found.files[0].id as string
 
