@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: Tambah Staf + Program Studi + monitoring scope lock
+Frontend: one-time staff temporary password credential modal
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T02:31:00+08:00
-Reason: staff application management must be scoped to assigned program study
+Triggered: 2026-09-08T02:44:00+08:00
+Reason: show SIMASI@###### password once after admin creates staff account
