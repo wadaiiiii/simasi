@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: SIMASI brand-gradient UI refresh using coral, cyan, navy, royal blue, violet; mobile-first responsive styling
-Deployment path: Vercel REST API from built dist + explicit canonical alias assignment
-Triggered: 2026-09-07T23:59:00+08:00
-Reason: canonical alias was still serving an older deployment; force simasimipa.vercel.app to latest READY build and verify alias
+Frontend: SIMASI brand-v8 landing + mobile-first brand palette + release marker
+Deployment path: Vercel REST API from built dist + canonical alias assignment
+Triggered: 2026-09-08T00:05:00+08:00
+Reason: deploy brand-v8 landing, then validate canonical domain serves release marker rather than stale legacy hero
