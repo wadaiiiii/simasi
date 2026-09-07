@@ -21,8 +21,8 @@ jobs:
       SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ORG_ID: team_4IWej07Hjmsjc6KzX0ZSLW4Q
+      CANONICAL_DOMAIN: simasimipa.vercel.app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,8 +33,47 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'Missing SUPABASE_ACCESS_TOKEN'; exit 1; }
           test -n "${VERCEL_TOKEN:-}" || { echo 'Missing VERCEL_TOKEN'; exit 1; }
-          test -n "${VERCEL_ORG_ID:-}" || { echo 'Missing VERCEL_ORG_ID'; exit 1; }
-          test -n "${VERCEL_PROJECT_ID:-}" || { echo 'Missing VERCEL_PROJECT_ID'; exit 1; }
+
+      - name: Resolve Vercel project by canonical domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP=$(curl --silent --show-error -o /tmp/projects.json -w '%{http_code}' \
+            "https://api.vercel.com/v9/projects?teamId=${VERCEL_ORG_ID}&limit=100" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          echo "Vercel projects API: HTTP ${HTTP}"
+          if [ "$HTTP" != "200" ]; then
+            echo "Vercel API message: $(jq -r '.error.message // .message // "unknown error"' /tmp/projects.json)"
+            exit 1
+          fi
+
+          PROJECT_ID=""
+          PROJECT_NAME=""
+          for ID in $(jq -r '.projects[]?.id' /tmp/projects.json); do
+            NAME=$(jq -r --arg id "$ID" '.projects[] | select(.id==$id) | .name' /tmp/projects.json)
+            DOM_HTTP=$(curl --silent --show-error -o /tmp/domains.json -w '%{http_code}' \
+              "https://api.vercel.com/v9/projects/${ID}/domains?teamId=${VERCEL_ORG_ID}&limit=100" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}")
+            if [ "$DOM_HTTP" = "200" ] && jq -e --arg d "$CANONICAL_DOMAIN" '.domains[]? | select(.name==$d)' /tmp/domains.json >/dev/null; then
+              PROJECT_ID="$ID"
+              PROJECT_NAME="$NAME"
+              break
+            fi
+          done
+
+          if [ -z "$PROJECT_ID" ]; then
+            PROJECT_ID=$(jq -r '[.projects[] | select(.name=="simasi" or .name=="simasimipa")][0].id // empty' /tmp/projects.json)
+            PROJECT_NAME=$(jq -r --arg id "$PROJECT_ID" '.projects[]? | select(.id==$id) | .name' /tmp/projects.json)
+          fi
+          test -n "$PROJECT_ID" || {
+            echo 'Project dengan domain simasimipa.vercel.app tidak ditemukan pada team ini.'
+            echo "Project terlihat: $(jq -r '[.projects[]?.name] | join(", ")' /tmp/projects.json)"
+            exit 1
+          }
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+          echo "VERCEL_PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
+          echo "Resolved Vercel project: $PROJECT_NAME"
+          rm -f /tmp/projects.json /tmp/domains.json
 
       - name: Resolve Supabase publishable key securely
         shell: bash
@@ -91,6 +130,7 @@ jobs:
           URL=$(vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Project: $VERCEL_PROJECT_NAME" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
           echo '- Canonical domain: https://simasimipa.vercel.app' >> "$GITHUB_STEP_SUMMARY"
           echo '- Auto deployment remains disabled by vercel.json' >> "$GITHUB_STEP_SUMMARY"
