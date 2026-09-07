@@ -1,6 +1,6 @@
 import {
   $, $$, esc, fmt, state, DOCS, PRODI, MAX_FILE, normalizeNim, normalizeProdi,
-  supabaseClient, toast, loading, statusBadge, isAdmin
+  supabaseClient, toast, loading, statusBadge, isAdmin, edge
 } from '../v4/core.js'
 
 const nowIso=()=>new Date().toISOString()
@@ -51,7 +51,7 @@ export function renderRegistrationRows(){
   $('#registrationRows').innerHTML=rows.length?rows.map(r=>{
     const docs=state.docs.filter(d=>d.pendaftaran_id===r.id),valid=docs.filter(d=>d.status==='valid').length,repair=docs.filter(d=>d.status==='perbaikan').length
     const detail=repair?`${repair} perlu perbaikan`:valid===DOCS.length?'10/10 valid':`${docs.length}/10 terunggah • ${valid} valid`
-    return `<tr class="border-t"><td class="p-4"><b>${esc(r.nama)}</b><div class="text-xs text-slate-500">${esc(r.nim)}</div><div class="mt-1 text-[10px] text-slate-400">${fmt(r.created_at)}</div></td><td class="p-4">${esc(r.prodi)}</td><td class="p-4">${esc(r.jenis_ujian)}</td><td class="p-4"><span class="text-xs font-bold ${repair?'text-rose-600':valid===DOCS.length?'text-emerald-700':'text-slate-600'}">${esc(detail)}</span></td><td class="p-4">${statusBadge(r.status)}</td><td class="p-4"><button data-action="review-registration" data-id="${r.id}" class="rounded-xl bg-[#182e79] px-3 py-2 text-xs font-extrabold text-white">Periksa Berkas</button></td></tr>`
+    return `<tr class="border-t"><td class="p-4"><b>${esc(r.nama)}</b><div class="text-xs text-slate-500">${esc(r.nim)}</div><div class="mt-1 text-[10px] text-slate-400">${fmt(r.created_at)}</div></td><td class="p-4">${esc(r.prodi)}</td><td class="p-4">${esc(r.jenis_ujian)}</td><td class="p-4"><span class="text-xs font-bold ${repair?'text-rose-600':valid===DOCS.length?'text-emerald-700':'text-slate-600'}">${esc(detail)}</span></td><td class="p-4">${statusBadge(r.status)}</td><td class="p-4"><div class="flex flex-wrap gap-2"><button data-action="review-registration" data-id="${r.id}" class="rounded-xl bg-[#182e79] px-3 py-2 text-xs font-extrabold text-white">Periksa Berkas</button>${isAdmin()?`<button data-action="delete-registration" data-id="${r.id}" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-extrabold text-rose-700">Hapus</button>`:''}</div></td></tr>`
   }).join(''):'<tr><td colspan="6" class="p-8 text-center text-slate-500">Tidak ada data sesuai filter.</td></tr>'
 }
 
@@ -103,6 +103,21 @@ export async function markComplete(id){
   const r=await supabaseClient.from('pendaftaran_seminar').update({status:'lengkap',catatan_verifikator:$('#overallReviewNote')?.value.trim()||'Berkas dinyatakan lengkap.',completed_at:nowIso(),verified_at:nowIso(),verified_by:state.user.id}).eq('id',id)
   if(r.error)return toast(r.error.message,'err')
   toast('Berkas pendaftaran dinyatakan lengkap.');await loadRegistrations();document.querySelector('#registrationReviewModal')?.remove()
+}
+
+export async function deleteRegistration(id){
+  const reg=state.registrations.find(r=>r.id===id)
+  if(!reg)return toast('Pengajuan tidak ditemukan.','err')
+  if(!isAdmin())return toast('Hanya admin yang dapat menghapus pengajuan.','err')
+  const ok=window.confirm(`Hapus pengajuan ${reg.jenis_ujian} atas nama ${reg.nama} (${reg.nim})?\n\nSemua dokumen PDF terkait juga akan dihapus dari Google Drive. Tindakan ini tidak dapat dibatalkan.`)
+  if(!ok)return
+  loading(true,'Menghapus pengajuan dan berkas Google Drive...')
+  try{
+    const data=await edge('admin-seminar',{action:'delete_registration',registration_id:id})
+    document.querySelector('#registrationReviewModal')?.remove()
+    toast(`Pengajuan dihapus (${Number(data?.deleted_documents||0)} dokumen).`)
+    await loadRegistrations()
+  }catch(e){toast(e.message||'Gagal menghapus pengajuan.','err')}finally{loading(false)}
 }
 
 export async function loadStudentHistory(){

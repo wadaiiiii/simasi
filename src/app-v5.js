@@ -1,13 +1,13 @@
 import { $, $$, state, isAdmin, isStaff, isLecturer, isStudent, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE, PRODI } from './v4/core.js'
 import { landingHtml } from './v4/landing-simple.js'
 import { privateShell, titleFor, adminDashboardHtml, lecturerDashboardHtml, registrationsHtml, announcementsHtml, importHtml, usersHtml, studentDashboardHtml, studentApplicationsHtml, seminarHtml } from './v5/views.js'
-import { loadLandingData, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser } from './v4/data.js'
+import { loadLandingData, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser, deleteUser } from './v4/data.js'
 import {
   loadAdminDashboard, loadRegistrations, renderRegistrationRows, openAdminReview, saveDocReview,
   startVerification, requestRevision, markComplete, loadStudentHistory, loadStudentApplications,
   openStudentApplication, validateSeminar, submitSeminar, previewLocal, previewAllLocal, previewRemote,
   closePreview, uploadRevision, revisionFileChanged, loadAnnouncementsAdmin, resetAnnouncementForm,
-  editAnnouncement, saveAnnouncement, toggleAnnouncement, deleteAnnouncement
+  editAnnouncement, saveAnnouncement, toggleAnnouncement, deleteAnnouncement, deleteRegistration
 } from './v5/workflow.js'
 import './lifecycle.css'
 
@@ -167,6 +167,7 @@ async function handleClick(e){
   if(action==='start-verification')return startVerification(el.dataset.id)
   if(action==='request-revision')return requestRevision(el.dataset.id)
   if(action==='mark-complete')return markComplete(el.dataset.id)
+  if(action==='delete-registration')return deleteRegistration(el.dataset.id)
   if(action==='student-application-detail')return openStudentApplication(el.dataset.id)
   if(action==='close-student-application')return $('#studentApplicationModal')?.remove()
   if(action==='preview-local-doc')return previewLocal(el.dataset.key)
@@ -187,6 +188,7 @@ Login: https://simasimipa.vercel.app`
     try{await navigator.clipboard.writeText(text);toast('Kredensial berhasil disalin.')}catch{toast('Gagal menyalin otomatis. Silakan salin manual.','info')}
     return
   }
+  if(action==='delete-user')return deleteUser(el.dataset.id,el.dataset.name||'User')
   if(action==='reset-user'){
     const data=await resetUser(el.dataset.email)
     if(data)showStaffCredential(data,data.full_name||data.username||'User',data.role||'',data.prodi||'','reset')

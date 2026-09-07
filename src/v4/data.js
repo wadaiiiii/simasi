@@ -101,7 +101,7 @@ export function renderUserRows(){
   if(!$('#userRows'))return
   const q=String($('#userSearch')?.value||'').toLowerCase(),r=$('#userRole')?.value||''
   const rows=state.users.filter(u=>(!q||`${u.full_name} ${u.nim} ${u.email}`.toLowerCase().includes(q))&&(!r||u.role===r))
-  $('#userRows').innerHTML=rows.length?rows.map(u=>`<tr class="border-t"><td class="p-4"><b>${esc(u.full_name||'-')}</b><div class="text-xs text-slate-500">${esc(u.email||'-')}</div></td><td class="p-4"><div>${esc(u.nim||'-')}</div><div class="text-xs text-slate-500">${esc(u.prodi||'-')}</div></td><td class="p-4"><select data-action="set-role" data-id="${u.id}" class="rounded-lg border px-2 py-2 text-xs"><option value="mahasiswa" ${u.role==='mahasiswa'?'selected':''}>Mahasiswa</option><option value="staff" ${u.role==='staff'?'selected':''}>Staff</option><option value="dosen" ${u.role==='dosen'?'selected':''}>Dosen</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></td><td class="p-4 text-xs text-slate-500">${u.last_sign_in_at?fmt(u.last_sign_in_at):'Belum pernah'}</td><td class="p-4">${u.email?`<button data-action="reset-user" data-email="${esc(u.email)}" class="text-xs font-extrabold text-emerald-700">Reset Kata Sandi</button>`:'-'}</td></tr>`).join(''):'<tr><td colspan="5" class="p-8 text-center text-slate-500">Tidak ada user.</td></tr>'
+  $('#userRows').innerHTML=rows.length?rows.map(u=>`<tr class="border-t"><td class="p-4"><b>${esc(u.full_name||'-')}</b><div class="text-xs text-slate-500">${esc(u.email||'-')}</div></td><td class="p-4"><div>${esc(u.nim||'-')}</div><div class="text-xs text-slate-500">${esc(u.prodi||'-')}</div></td><td class="p-4"><select data-action="set-role" data-id="${u.id}" class="rounded-lg border px-2 py-2 text-xs"><option value="mahasiswa" ${u.role==='mahasiswa'?'selected':''}>Mahasiswa</option><option value="staff" ${u.role==='staff'?'selected':''}>Staff</option><option value="dosen" ${u.role==='dosen'?'selected':''}>Dosen</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></td><td class="p-4 text-xs text-slate-500">${u.last_sign_in_at?fmt(u.last_sign_in_at):'Belum pernah'}</td><td class="p-4"><div class="flex flex-wrap gap-3">${u.email?`<button data-action="reset-user" data-email="${esc(u.email)}" class="text-xs font-extrabold text-emerald-700">Reset Kata Sandi</button>`:''}<button data-action="delete-user" data-id="${u.id}" data-name="${esc(u.full_name||u.email||u.nim||'User')}" class="text-xs font-extrabold text-rose-600">Hapus Akun</button></div></td></tr>`).join(''):'<tr><td colspan="5" class="p-8 text-center text-slate-500">Tidak ada user.</td></tr>'
 }
 export async function resetUser(email){
   try{
@@ -112,6 +112,19 @@ export async function resetUser(email){
     return data
   }catch(e){toast(e.message||'Reset kata sandi gagal.','err');return null}finally{loading(false)}
 }
+export async function deleteUser(id,name='User'){
+  if(!id)return null
+  const ok=window.confirm(`Hapus akun ${name}?\n\nSemua pengajuan seminar dan file berkas terkait akun ini juga akan dihapus. Data master mahasiswa tetap dipertahankan. Tindakan ini tidak dapat dibatalkan.`)
+  if(!ok)return null
+  try{
+    loading(true,'Menghapus akun dan data terkait...')
+    const data=await edge('admin-users',{action:'delete_user',user_id:id})
+    toast(`Akun ${data?.full_name||name} berhasil dihapus.`)
+    await loadUsers()
+    return data
+  }catch(e){toast(e.message||'Gagal menghapus akun.','err');return null}finally{loading(false)}
+}
+
 export async function createStaff(name,email,role){try{loading(true,'Membuat akun staf...');await edge('admin-users',{action:'create_staff',full_name:name,email,role});$('#staffModal')?.remove();toast('Akun staf dibuat dan email pengaturan password dikirim.');await loadUsers()}catch(e){toast(e.message,'err')}finally{loading(false)}}
 
 export async function loadStudentHistory(){

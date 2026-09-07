@@ -1,4 +1,5 @@
 import { corsHeaders, getContext, json } from '../_shared/auth.ts'
+import { deleteUserSeminarRegistrations } from '../_shared/deleteSeminar.ts'
 
 const ALLOWED_ROLES = ['mahasiswa', 'staff', 'dosen', 'admin']
 const ALLOWED_PRODI = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']
@@ -71,6 +72,39 @@ Deno.serve(async (req) => {
       const updated = await admin.from('profiles').update({ role: newRole }).eq('id', userId)
       if (updated.error) throw updated.error
       return json({ ok: true, message: 'Role user diperbarui.' })
+    }
+
+    if (action === 'delete_user') {
+      const userId = String(body.user_id || '').trim()
+      if (!userId) return json({ ok: false, message: 'ID user tidak tersedia.' }, 400)
+      if (userId === user.id) return json({ ok: false, message: 'Admin tidak dapat menghapus akun yang sedang digunakan.' }, 400)
+
+      const targetResult = await admin.from('profiles').select('id,email,full_name,nim,prodi,role').eq('id', userId).maybeSingle()
+      if (targetResult.error) throw targetResult.error
+      const target = targetResult.data
+      if (!target) return json({ ok: false, message: 'Profil user tidak ditemukan.' }, 404)
+
+      const authTarget = await admin.auth.admin.getUserById(userId)
+      if (authTarget.error || !authTarget.data.user) return json({ ok: false, message: 'Akun Auth tidak ditemukan.' }, 404)
+
+      if (String(target.role || '').toLowerCase() === 'admin') {
+        const admins = await admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin')
+        if (admins.error) throw admins.error
+        if ((admins.count || 0) <= 1) return json({ ok: false, message: 'Admin terakhir tidak dapat dihapus.' }, 400)
+      }
+
+      const cleanup = await deleteUserSeminarRegistrations(admin, userId)
+      const removed = await admin.auth.admin.deleteUser(userId)
+      if (removed.error) throw removed.error
+
+      return json({
+        ok: true,
+        user_id: userId,
+        full_name: target.full_name || authTarget.data.user.user_metadata?.full_name || null,
+        email: target.email || authTarget.data.user.email || null,
+        ...cleanup,
+        message: 'Akun berhasil dihapus. Data master mahasiswa tetap dipertahankan.'
+      })
     }
 
     if (action === 'reset_password') {
