@@ -1,0 +1,100 @@
+name: Supabase Backend Release (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_database:
+        description: "Apply student import / Drive database migration"
+        required: true
+        type: boolean
+        default: true
+      configure_google_drive:
+        description: "Push Google Drive credentials from GitHub Secrets to Supabase"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simasi-supabase-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: 19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required Supabase secrets
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
+          if [[ "${{ inputs.apply_database }}" == "true" ]]; then
+            test -n "${SUPABASE_DB_URL:-}" || { echo "Missing SUPABASE_DB_URL"; exit 1; }
+          fi
+
+      - name: Install Supabase CLI
+        run: npm install --global supabase@latest
+
+      - name: Apply database migration script
+        if: ${{ inputs.apply_database }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/student_import_drive.sql
+
+      - name: Configure Google Drive secrets (OAuth)
+        if: ${{ inputs.configure_google_drive && secrets.GOOGLE_OAUTH_CLIENT_ID != '' && secrets.GOOGLE_OAUTH_CLIENT_SECRET != '' && secrets.GOOGLE_OAUTH_REFRESH_TOKEN != '' }}
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+            GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
+            GOOGLE_OAUTH_CLIENT_ID="$GOOGLE_OAUTH_CLIENT_ID" \
+            GOOGLE_OAUTH_CLIENT_SECRET="$GOOGLE_OAUTH_CLIENT_SECRET" \
+            GOOGLE_OAUTH_REFRESH_TOKEN="$GOOGLE_OAUTH_REFRESH_TOKEN"
+
+      - name: Configure Google Drive secrets (service account fallback)
+        if: ${{ inputs.configure_google_drive && secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL != '' && secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY != '' }}
+        env:
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+            GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
+            GOOGLE_SERVICE_ACCOUNT_EMAIL="$GOOGLE_SERVICE_ACCOUNT_EMAIL" \
+            GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+
+      - name: Deploy import-mahasiswa
+        run: supabase functions deploy import-mahasiswa --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy change-initial-password
+        run: supabase functions deploy change-initial-password --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy upload-seminar-drive
+        run: supabase functions deploy upload-seminar-drive --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Release summary
+        run: |
+          echo "### SIMASI Supabase release" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Project: $SUPABASE_PROJECT_REF" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Database script: ${{ inputs.apply_database }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Google Drive secrets requested: ${{ inputs.configure_google_drive }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Functions: import-mahasiswa, change-initial-password, upload-seminar-drive" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Drive root: $GOOGLE_DRIVE_ROOT_FOLDER_ID" >> "$GITHUB_STEP_SUMMARY"
