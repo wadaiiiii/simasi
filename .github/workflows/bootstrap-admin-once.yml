@@ -1,0 +1,61 @@
+name: Bootstrap First SIMASI Admin (One Shot)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/bootstrap-admin-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
+      SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SITE_URL: https://simasimipa.vercel.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Supabase token
+        run: test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'Missing SUPABASE_ACCESS_TOKEN'; exit 1; }
+
+      - name: Configure Supabase Auth production URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' '{"site_url":"https://simasimipa.vercel.app","uri_allow_list":"https://simasimipa.vercel.app/**,http://localhost:5173/**"}' >/tmp/auth-config.json
+          curl --fail-with-body --silent --show-error \
+            -X PATCH "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/auth-config.json >/dev/null
+
+      - name: Install Supabase CLI
+        run: npm install --global supabase@latest
+
+      - name: Deploy self-locking bootstrap helper
+        run: supabase functions deploy bootstrap-admin-once --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+
+      - name: Bootstrap FMIPA admin and send password setup email
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -X POST "$SUPABASE_URL/functions/v1/bootstrap-admin-once" \
+            -H 'Content-Type: application/json' \
+            -d '{}' >/tmp/admin-result.json
+          test "$(jq -r '.ok' /tmp/admin-result.json)" = true
+          test "$(jq -r '.email_sent' /tmp/admin-result.json)" = true
+          echo '### SIMASI first admin' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Email: fmipa@unsulbar.ac.id' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Role: admin' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Password setup email: sent' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove bootstrap helper
+        if: always()
+        run: supabase functions delete bootstrap-admin-once --project-ref "$SUPABASE_PROJECT_REF" --yes || true
