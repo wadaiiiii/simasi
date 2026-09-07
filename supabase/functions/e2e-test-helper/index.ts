@@ -56,8 +56,15 @@ Deno.serve(async (req) => {
 
     if (action === 'cleanup') {
       const adminId = String(body.admin_user_id || '')
-      const studentId = String(body.student_user_id || '')
+      let studentId = String(body.student_user_id || '')
       const nim = String(body.nim || '').trim().toUpperCase()
+
+      if (!studentId && nim) {
+        const targetEmail = `${nim.toLowerCase()}@students.simasi.local`
+        const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        studentId = users?.users?.find((u) => String(u.email || '').toLowerCase() === targetEmail)?.id || ''
+      }
+
       if (studentId) await admin.from('pendaftaran_seminar').delete().eq('user_id', studentId)
       if (nim) await admin.from('mahasiswa').delete().eq('nim', nim)
       if (studentId) await admin.auth.admin.deleteUser(studentId)
