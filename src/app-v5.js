@@ -1,7 +1,7 @@
-import { $, $$, state, isAdmin, isStaff, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE } from './v4/core.js'
+import { $, $$, state, isAdmin, isStaff, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE, PRODI } from './v4/core.js'
 import { landingHtml } from './v4/landing-simple.js'
 import { privateShell, titleFor, adminDashboardHtml, registrationsHtml, announcementsHtml, importHtml, usersHtml, studentDashboardHtml, studentApplicationsHtml, seminarHtml } from './v5/views.js'
-import { loadLandingData, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser, createStaff } from './v4/data.js'
+import { loadLandingData, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser } from './v4/data.js'
 import {
   loadAdminDashboard, loadRegistrations, renderRegistrationRows, openAdminReview, saveDocReview,
   startVerification, requestRevision, markComplete, loadStudentHistory, loadStudentApplications,
@@ -50,7 +50,15 @@ async function renderPage(){
   $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===state.page))
   if(state.page==='admin-dashboard'){main.innerHTML=adminDashboardHtml(false);await loadAdminDashboard();return}
   if(state.page==='staff-dashboard'){main.innerHTML=adminDashboardHtml(true);await loadAdminDashboard();return}
-  if(state.page==='admin-registrations'){main.innerHTML=registrationsHtml();await loadRegistrations();return}
+  if(state.page==='admin-registrations'){
+    main.innerHTML=registrationsHtml()
+    if(!isAdmin()){
+      const scope=normalizeProdi(state.profile?.prodi||'')
+      const selector=$('#regProdi')
+      if(selector){selector.value=scope;selector.disabled=true;selector.title=scope?`Akses staf dibatasi ke ${scope}`:'Program studi staf belum ditetapkan'}
+    }
+    await loadRegistrations();return
+  }
   if(state.page==='admin-announcements'){main.innerHTML=announcementsHtml();await loadAnnouncementsAdmin();return}
   if(state.page==='admin-import'){main.innerHTML=importHtml();state.importRows=[];renderImportRows();return}
   if(state.page==='admin-users'){main.innerHTML=usersHtml();await loadUsers();return}
@@ -110,7 +118,19 @@ async function savePassword(){
 }
 
 function openCreateStaff(){
-  document.body.insertAdjacentHTML('beforeend',`<div id="staffModal" class="fixed inset-0 z-[950] flex items-center justify-center bg-slate-950/60 p-4"><div class="w-full max-w-lg rounded-3xl bg-white p-6"><div class="flex justify-between"><h3 class="text-xl font-extrabold">Tambah Staf</h3><button data-action="close-staff" class="rounded-xl border px-3">✕</button></div><form id="staffForm" class="mt-5 space-y-4"><input id="staffName" required class="w-full rounded-xl border px-4 py-3" placeholder="Nama lengkap"><input id="staffEmail" type="email" required class="w-full rounded-xl border px-4 py-3" placeholder="Email"><select id="staffRole" class="w-full rounded-xl border px-4 py-3"><option value="dosen">Dosen/Staf</option><option value="admin">Admin</option></select><button class="w-full rounded-xl bg-emerald-600 px-5 py-3 font-extrabold text-white">Buat Akun & Kirim Email</button></form></div></div>`)
+  document.body.insertAdjacentHTML('beforeend',`<div id="staffModal" class="fixed inset-0 z-[950] flex items-center justify-center bg-slate-950/60 p-4"><div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><div><h3 class="text-xl font-extrabold">Tambah Staf</h3><p class="mt-1 text-xs leading-5 text-slate-500">Staf hanya dapat mengelola pengajuan mahasiswa pada program studinya.</p></div><button data-action="close-staff" class="rounded-xl border px-3 py-2">✕</button></div><form id="staffForm" class="mt-5 space-y-4"><input id="staffName" required class="w-full rounded-xl border px-4 py-3" placeholder="Nama lengkap"><input id="staffEmail" type="email" required class="w-full rounded-xl border px-4 py-3" placeholder="Email"><div><label class="mb-2 block text-xs font-bold text-slate-600">Peran</label><select id="staffRole" class="w-full rounded-xl border px-4 py-3"><option value="dosen">Dosen/Staf</option><option value="admin">Admin</option></select></div><div id="staffProdiField"><label class="mb-2 block text-xs font-bold text-slate-600">Program Studi</label><select id="staffProdi" required class="w-full rounded-xl border px-4 py-3"><option value="">Pilih Program Studi</option>${PRODI.map(p=>`<option value="${p}">${p}</option>`).join('')}</select><p class="mt-2 text-[11px] leading-5 text-slate-500">Monitoring, verifikasi, dan preview berkas akan dibatasi ke Prodi ini.</p></div><button class="w-full rounded-xl bg-[linear-gradient(90deg,#0a84bd,#2636b7,#4d1daf)] px-5 py-3 font-extrabold text-white">Buat Akun & Kirim Email</button></form></div></div>`)
+}
+
+async function createStaffScoped(name,email,role,prodi=''){
+  loading(true,'Membuat akun staf...')
+  try{
+    const {data,error}=await supabaseClient.functions.invoke('admin-users',{body:{action:'create_staff',full_name:name,email,role,prodi}})
+    if(error){let msg=error.message;try{const res=error.context;if(res?.clone){const j=await res.clone().json();msg=j?.message||j?.error||msg}}catch{}throw new Error(msg||'Gagal membuat staf.')}
+    if(data?.ok===false)throw new Error(data.message||'Gagal membuat staf.')
+    $('#staffModal')?.remove()
+    toast(role==='dosen'?`Akun staf ${prodi} dibuat dan email pengaturan password dikirim.`:'Akun admin dibuat dan email pengaturan password dikirim.')
+    await loadUsers()
+  }catch(e){toast(e.message||'Gagal membuat staf.','err')}finally{loading(false)}
 }
 
 async function handleClick(e){
@@ -168,6 +188,12 @@ async function handleChange(e){
   const t=e.target
   if(['regSearch','regProdi','regType','regStatus'].includes(t.id))return renderRegistrationRows()
   if(['userSearch','userRole'].includes(t.id))return renderUserRows()
+  if(t.id==='staffRole'){
+    const staff=t.value==='dosen',field=$('#staffProdiField'),select=$('#staffProdi')
+    field?.classList.toggle('hidden',!staff)
+    if(select){select.required=staff;if(!staff)select.value=''}
+    return
+  }
   if(t.id==='importFile'){
     const f=t.files?.[0];if(!f)return
     $('#importFileName').textContent=f.name;loading(true,'Membaca data mahasiswa...')
@@ -198,7 +224,12 @@ async function handleSubmit(e){
   if(e.target.id==='seminarForm'){
     e.preventDefault();const id=await submitSeminar();if(id){state.page='student-applications';await renderPrivate()}return
   }
-  if(e.target.id==='staffForm'){e.preventDefault();return createStaff($('#staffName').value.trim(),$('#staffEmail').value.trim(),$('#staffRole').value)}
+  if(e.target.id==='staffForm'){
+    e.preventDefault()
+    const role=$('#staffRole').value,prodi=role==='dosen'?$('#staffProdi').value:''
+    if(role==='dosen'&&!PRODI.includes(prodi))return toast('Pilih program studi staf.','info')
+    return createStaffScoped($('#staffName').value.trim(),$('#staffEmail').value.trim(),role,prodi)
+  }
 }
 
 function handlePointerMove(e){
