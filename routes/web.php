@@ -13,6 +13,8 @@ Route::redirect('/', '/dashboard');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:8,1')->name('login.submit');
+Route::get('/daftar', [AuthController::class, 'showRegister'])->name('register');
+Route::post('/daftar', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.submit');
 
 Route::middleware('simasi.auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

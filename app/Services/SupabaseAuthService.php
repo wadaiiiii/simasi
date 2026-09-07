@@ -21,6 +21,21 @@ class SupabaseAuthService
         return $response->json();
     }
 
+    public function register(string $fullName, string $email, string $password): array
+    {
+        $response = $this->client()->post($this->url('/auth/v1/signup'), [
+            'email' => $email,
+            'password' => $password,
+            'data' => [
+                'full_name' => $fullName,
+            ],
+        ]);
+        if ($response->failed()) {
+            throw new RuntimeException($this->message($response, 'Akun belum dapat dibuat.'));
+        }
+        return $response->json();
+    }
+
     public function refresh(string $refreshToken): array
     {
         $response = $this->client()->post($this->url('/auth/v1/token?grant_type=refresh_token'), [
