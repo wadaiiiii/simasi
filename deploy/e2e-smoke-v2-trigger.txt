@@ -1,3 +1,4 @@
 SIMASI backend E2E smoke v2 trigger
-2026-09-07T20:08:00+08:00
+2026-09-07T21:08:00+08:00
 Google Drive OAuth FMIPA enabled
+Reason: verify fixed import-mahasiswa, first-login password, seminar upload, and Drive metadata
