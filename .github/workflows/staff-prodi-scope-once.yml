@@ -1,0 +1,202 @@
+name: SIMASI Staff Prodi Scope Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/staff-prodi-scope-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply staff program-study scoping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected block not found in {path}: {old[:100]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Frontend modal: program studi is required for Dosen/Staf.
+          replace_once(
+              'src/app-v5.js',
+              "import { $, $$, state, isAdmin, isStaff, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE } from './v4/core.js'",
+              "import { $, $$, state, isAdmin, isStaff, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE, PRODI } from './v4/core.js'"
+          )
+
+          old_modal = '''function openCreateStaff(){
+            document.body.insertAdjacentHTML('beforeend',`<div id="staffModal" class="fixed inset-0 z-[950] flex items-center justify-center bg-slate-950/60 p-4"><div class="w-full max-w-lg rounded-3xl bg-white p-6"><div class="flex justify-between"><h3 class="text-xl font-extrabold">Tambah Staf</h3><button data-action="close-staff" class="rounded-xl border px-3">✕</button></div><form id="staffForm" class="mt-5 space-y-4"><input id="staffName" required class="w-full rounded-xl border px-4 py-3" placeholder="Nama lengkap"><input id="staffEmail" type="email" required class="w-full rounded-xl border px-4 py-3" placeholder="Email"><select id="staffRole" class="w-full rounded-xl border px-4 py-3"><option value="dosen">Dosen/Staf</option><option value="admin">Admin</option></select><button class="w-full rounded-xl bg-emerald-600 px-5 py-3 font-extrabold text-white">Buat Akun & Kirim Email</button></form></div></div>`)
+          }'''
+          new_modal = '''function openCreateStaff(){
+            document.body.insertAdjacentHTML('beforeend',`<div id="staffModal" class="fixed inset-0 z-[950] flex items-center justify-center bg-slate-950/60 p-4"><div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div class="flex items-start justify-between gap-4"><div><h3 class="text-xl font-extrabold">Tambah Staf</h3><p class="mt-1 text-xs leading-5 text-slate-500">Staf hanya dapat mengelola pengajuan mahasiswa pada program studinya.</p></div><button data-action="close-staff" class="rounded-xl border px-3 py-2">✕</button></div><form id="staffForm" class="mt-5 space-y-4"><input id="staffName" required class="w-full rounded-xl border px-4 py-3" placeholder="Nama lengkap"><input id="staffEmail" type="email" required class="w-full rounded-xl border px-4 py-3" placeholder="Email"><div><label class="mb-2 block text-xs font-bold text-slate-600">Peran</label><select id="staffRole" class="w-full rounded-xl border px-4 py-3"><option value="dosen">Dosen/Staf</option><option value="admin">Admin</option></select></div><div id="staffProdiField"><label class="mb-2 block text-xs font-bold text-slate-600">Program Studi</label><select id="staffProdi" required class="w-full rounded-xl border px-4 py-3"><option value="">Pilih Program Studi</option>${PRODI.map(p=>`<option value="${p}">${p}</option>`).join('')}</select><p class="mt-2 text-[11px] leading-5 text-slate-500">Akses monitoring dan verifikasi akan otomatis dibatasi ke Prodi ini.</p></div><button class="w-full rounded-xl bg-[linear-gradient(90deg,#0a84bd,#2636b7,#4d1daf)] px-5 py-3 font-extrabold text-white">Buat Akun & Kirim Email</button></form></div></div>`)
+          }'''
+          replace_once('src/app-v5.js', old_modal, new_modal)
+
+          replace_once(
+              'src/app-v5.js',
+              "  if(['userSearch','userRole'].includes(t.id))return renderUserRows()\n  if(t.id==='importFile')",
+              "  if(['userSearch','userRole'].includes(t.id))return renderUserRows()\n  if(t.id==='staffRole'){\n    const staff=t.value==='dosen',field=$('#staffProdiField'),select=$('#staffProdi')\n    field?.classList.toggle('hidden',!staff)\n    if(select){select.required=staff;if(!staff)select.value=''}\n    return\n  }\n  if(t.id==='importFile')"
+          )
+
+          replace_once(
+              'src/app-v5.js',
+              "  if(e.target.id==='staffForm'){e.preventDefault();return createStaff($('#staffName').value.trim(),$('#staffEmail').value.trim(),$('#staffRole').value)}",
+              "  if(e.target.id==='staffForm'){e.preventDefault();const role=$('#staffRole').value,prodi=role==='dosen'?$('#staffProdi').value:'';if(role==='dosen'&&!prodi)return toast('Pilih program studi staf.','info');return createStaff($('#staffName').value.trim(),$('#staffEmail').value.trim(),role,prodi)}"
+          )
+
+          replace_once(
+              'src/v4/data.js',
+              "export async function createStaff(name,email,role){try{loading(true,'Membuat akun staf...');await edge('admin-users',{action:'create_staff',full_name:name,email,role});$('#staffModal')?.remove();toast('Akun staf dibuat dan email pengaturan password dikirim.');await loadUsers()}catch(e){toast(e.message,'err')}finally{loading(false)}}",
+              "export async function createStaff(name,email,role,prodi=''){try{loading(true,'Membuat akun staf...');await edge('admin-users',{action:'create_staff',full_name:name,email,role,prodi});$('#staffModal')?.remove();toast(role==='dosen'?`Akun staf ${prodi} dibuat dan email pengaturan password dikirim.`:'Akun admin dibuat dan email pengaturan password dikirim.');await loadUsers()}catch(e){toast(e.message,'err')}finally{loading(false)}}"
+          )
+
+          # Scope staff dashboard + monitoring queries to profile.prodi on the client as well.
+          old_dashboard = '''export async function loadAdminDashboard(){
+            loading(true,'Memuat dashboard...')
+            try{
+              const [students,regs]=await Promise.all([
+                supabaseClient.from('mahasiswa').select('id',{count:'exact',head:true}),
+                supabaseClient.from('pendaftaran_seminar').select('*').order('created_at',{ascending:false})
+              ])'''
+          new_dashboard = '''export async function loadAdminDashboard(){
+            loading(true,'Memuat dashboard...')
+            try{
+              const scopeProdi=isAdmin()?'':normalizeProdi(state.profile?.prodi||'')
+              if(!isAdmin()&&!scopeProdi)throw new Error('Program studi akun staf belum ditetapkan. Hubungi administrator.')
+              let studentQuery=supabaseClient.from('mahasiswa').select('id',{count:'exact',head:true})
+              let regQuery=supabaseClient.from('pendaftaran_seminar').select('*').order('created_at',{ascending:false})
+              if(scopeProdi){studentQuery=studentQuery.eq('prodi',scopeProdi);regQuery=regQuery.eq('prodi',scopeProdi)}
+              const [students,regs]=await Promise.all([studentQuery,regQuery])'''
+          replace_once('src/v5/workflow.js', old_dashboard, new_dashboard)
+
+          old_regs = '''export async function loadRegistrations(){
+            loading(true,'Memuat pendaftar...')
+            try{
+              const [r,d]=await Promise.all([
+                supabaseClient.from('pendaftaran_seminar').select('*').order('created_at',{ascending:false}),
+                supabaseClient.from('berkas_seminar').select('*').order('created_at')
+              ])'''
+          new_regs = '''export async function loadRegistrations(){
+            loading(true,'Memuat pendaftar...')
+            try{
+              const scopeProdi=isAdmin()?'':normalizeProdi(state.profile?.prodi||'')
+              if(!isAdmin()&&!scopeProdi)throw new Error('Program studi akun staf belum ditetapkan. Hubungi administrator.')
+              let regQuery=supabaseClient.from('pendaftaran_seminar').select('*').order('created_at',{ascending:false})
+              if(scopeProdi)regQuery=regQuery.eq('prodi',scopeProdi)
+              const [r,d]=await Promise.all([
+                regQuery,
+                supabaseClient.from('berkas_seminar').select('*').order('created_at')
+              ])'''
+          replace_once('src/v5/workflow.js', old_regs, new_regs)
+
+          replace_once(
+              'src/v5/workflow.js',
+              "    state.registrations=r.data||[]\n    state.docs=d.data||[]\n    renderRegistrationRows()",
+              "    state.registrations=r.data||[]\n    state.docs=d.data||[]\n    if(scopeProdi&&$('#regProdi')){$('#regProdi').value=scopeProdi;$('#regProdi').disabled=true;$('#regProdi').title=`Akses staf dibatasi ke ${scopeProdi}`}\n    renderRegistrationRows()"
+          )
+
+          # Admin users Edge Function: require and persist program study for staff.
+          replace_once(
+              'supabase/functions/admin-users/index.ts',
+              "const ALLOWED_ROLES = ['mahasiswa', 'dosen', 'admin']",
+              "const ALLOWED_ROLES = ['mahasiswa', 'dosen', 'admin']\nconst ALLOWED_PRODI = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']"
+          )
+          replace_once(
+              'supabase/functions/admin-users/index.ts',
+              "      const requestedRole = String(body.role || 'dosen')\n      if (!email.includes('@') || !fullName || !['dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)",
+              "      const requestedRole = String(body.role || 'dosen')\n      const requestedProdi = requestedRole === 'dosen' ? String(body.prodi || '').trim() : ''\n      if (!email.includes('@') || !fullName || !['dosen', 'admin'].includes(requestedRole)) return json({ ok: false, message: 'Nama, email, atau role staf tidak valid.' }, 400)\n      if (requestedRole === 'dosen' && !ALLOWED_PRODI.includes(requestedProdi)) return json({ ok: false, message: 'Program studi staf wajib dipilih dan harus valid.' }, 400)"
+          )
+          replace_once(
+              'supabase/functions/admin-users/index.ts',
+              "          user_metadata: { full_name: fullName },\n          app_metadata: { simasi_account_type: requestedRole }",
+              "          user_metadata: { full_name: fullName, prodi: requestedProdi || null },\n          app_metadata: { simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }"
+          )
+          replace_once(
+              'supabase/functions/admin-users/index.ts',
+              "          user_metadata: { ...(authUser?.user_metadata || {}), full_name: fullName },\n          app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: requestedRole }",
+              "          user_metadata: { ...(authUser?.user_metadata || {}), full_name: fullName, prodi: requestedProdi || null },\n          app_metadata: { ...(authUser?.app_metadata || {}), simasi_account_type: requestedRole, simasi_prodi: requestedProdi || null }"
+          )
+          replace_once(
+              'supabase/functions/admin-users/index.ts',
+              "        role: requestedRole,\n        must_change_password: true",
+              "        role: requestedRole,\n        prodi: requestedRole === 'dosen' ? requestedProdi : null,\n        must_change_password: true"
+          )
+
+          # Secure Drive preview: admin all, staff only same prodi, student only own.
+          replace_once(
+              'supabase/functions/preview-seminar-drive/index.ts',
+              ".select('id,nama_berkas,storage_provider,drive_file_id,pendaftaran_seminar!inner(user_id)')",
+              ".select('id,nama_berkas,storage_provider,drive_file_id,pendaftaran_seminar!inner(user_id,prodi)')"
+          )
+          old_auth = '''    const registration = (doc as any).pendaftaran_seminar
+              const ownerId = Array.isArray(registration) ? registration[0]?.user_id : registration?.user_id
+              const isStaff = ['dosen', 'admin'].includes(String(profile.role || '').toLowerCase())
+              if (!isStaff && ownerId !== user.id) {
+                return json({ ok: false, message: 'Anda tidak memiliki akses ke berkas ini.' }, 403)
+              }'''
+          new_auth = '''    const registration = (doc as any).pendaftaran_seminar
+              const reg = Array.isArray(registration) ? registration[0] : registration
+              const ownerId = reg?.user_id
+              const registrationProdi = String(reg?.prodi || '').trim().toLowerCase()
+              const role = String(profile.role || '').trim().toLowerCase()
+              const profileProdi = String(profile.prodi || '').trim().toLowerCase()
+              const canManage = role === 'admin' || (role === 'dosen' && Boolean(profileProdi) && profileProdi === registrationProdi)
+              if (ownerId !== user.id && !canManage) {
+                return json({ ok: false, message: 'Akses ditolak. Staf hanya dapat membuka berkas mahasiswa pada program studinya.' }, 403)
+              }'''
+          replace_once('supabase/functions/preview-seminar-drive/index.ts', old_auth, new_auth)
+
+          # Database RLS scope.
+          Path('supabase/staff_prodi_scope.sql').write_text('''-- SIMASI staff program-study scope\n-- Admin can manage all programs; Dosen/Staf only their own profile.prodi.\n\ncreate or replace function public.can_manage_prodi(p_prodi text)\nreturns boolean\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select exists (\n    select 1\n    from public.profiles p\n    where p.id = auth.uid()\n      and (\n        p.role = 'admin'\n        or (\n          p.role = 'dosen'\n          and nullif(trim(p.prodi), '') is not null\n          and lower(trim(p.prodi)) = lower(trim(p_prodi))\n        )\n      )\n  );\n$$;\n\nrevoke all on function public.can_manage_prodi(text) from public;\ngrant execute on function public.can_manage_prodi(text) to authenticated;\n\n-- Registration visibility and verification scope.\ndrop policy if exists \"seminar read own/staff\" on public.pendaftaran_seminar;\ndrop policy if exists \"seminar read own/prodi staff\" on public.pendaftaran_seminar;\ncreate policy \"seminar read own/prodi staff\"\non public.pendaftaran_seminar\nfor select to authenticated\nusing (user_id = auth.uid() or public.can_manage_prodi(prodi));\n\ndrop policy if exists \"seminar staff update\" on public.pendaftaran_seminar;\ndrop policy if exists \"seminar prodi staff update\" on public.pendaftaran_seminar;\ncreate policy \"seminar prodi staff update\"\non public.pendaftaran_seminar\nfor update to authenticated\nusing (public.can_manage_prodi(prodi))\nwith check (public.can_manage_prodi(prodi));\n\n-- Document visibility/review follows its parent registration program study.\ndrop policy if exists \"berkas read owner/staff\" on public.berkas_seminar;\ndrop policy if exists \"berkas read owner/prodi staff\" on public.berkas_seminar;\ncreate policy \"berkas read owner/prodi staff\"\non public.berkas_seminar\nfor select to authenticated\nusing (\n  exists (\n    select 1 from public.pendaftaran_seminar p\n    where p.id = pendaftaran_id\n      and (p.user_id = auth.uid() or public.can_manage_prodi(p.prodi))\n  )\n);\n\ndrop policy if exists \"berkas staff update\" on public.berkas_seminar;\ndrop policy if exists \"berkas prodi staff update\" on public.berkas_seminar;\ncreate policy \"berkas prodi staff update\"\non public.berkas_seminar\nfor update to authenticated\nusing (\n  exists (select 1 from public.pendaftaran_seminar p where p.id = pendaftaran_id and public.can_manage_prodi(p.prodi))\n)\nwith check (\n  exists (select 1 from public.pendaftaran_seminar p where p.id = pendaftaran_id and public.can_manage_prodi(p.prodi))\n);\n\ncreate index if not exists idx_profiles_role_prodi on public.profiles(role, prodi);\n''')
+
+          # Include migration + admin-users deployment in backend release.
+          replace_once(
+              '.github/workflows/supabase-release-once.yml',
+              "              Path('supabase/seminar_lifecycle.sql').read_text(),",
+              "              Path('supabase/seminar_lifecycle.sql').read_text(),\n              Path('supabase/staff_prodi_scope.sql').read_text(),"
+          )
+          replace_once(
+              '.github/workflows/supabase-release-once.yml',
+              "      - name: Deploy change-initial-password\n        run: supabase functions deploy change-initial-password --project-ref \"$SUPABASE_PROJECT_REF\"",
+              "      - name: Deploy admin-users\n        run: supabase functions deploy admin-users --project-ref \"$SUPABASE_PROJECT_REF\"\n\n      - name: Deploy change-initial-password\n        run: supabase functions deploy change-initial-password --project-ref \"$SUPABASE_PROJECT_REF\""
+          )
+
+          # Production release triggers.
+          Path('deploy/supabase-release-trigger.txt').write_text('''SIMASI Supabase production release trigger\nTimestamp: 2026-09-08T02:15:00+08:00\nDatabase migration: staff program-study scoped RLS\nEdge Functions: admin-users + preview-seminar-drive + existing seminar functions\nReason: staff must only manage applications from their assigned program study\n''')
+          Path('deploy/vercel-production-trigger.txt').write_text('''SIMASI Vercel production release trigger\nTimestamp: 2026-09-08T02:15:00+08:00\nFrontend: Add Staff Program Studi selector and lock monitoring scope\nReason: staff application management is scoped to assigned program study\n''')
+          PY
+
+      - name: Syntax checks
+        run: |
+          node --check src/app-v5.js
+          node --check src/v4/data.js
+          node --check src/v5/workflow.js
+
+      - name: Commit production patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'SIMASI Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/app-v5.js src/v4/data.js src/v5/workflow.js \
+            supabase/functions/admin-users/index.ts \
+            supabase/functions/preview-seminar-drive/index.ts \
+            supabase/staff_prodi_scope.sql \
+            .github/workflows/supabase-release-once.yml \
+            deploy/supabase-release-trigger.txt deploy/vercel-production-trigger.txt
+          git commit -m 'feat: scope staff application management by program study'
+          git push origin main
