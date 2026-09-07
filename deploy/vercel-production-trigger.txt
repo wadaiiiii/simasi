@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: simplified public information landing, compact login modal, alternate Unsulbar logo source, deterministic private navigation
+Frontend: SIMASI v5 public-first boot, forced Unsulbar academic logo, simplified landing, stable private router
 Deployment path: Vercel REST API from built dist
-Triggered: 2026-09-07T22:36:00+08:00
-Reason: fix stuck admin navigation and simplify public landing/login
+Triggered: 2026-09-07T22:45:00+08:00
+Reason: deploy root-public landing and force official Unsulbar logo source
