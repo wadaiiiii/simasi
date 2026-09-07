@@ -1,0 +1,3 @@
+SIMASI admin deletion patch trigger
+Timestamp: 2026-09-08T07:55:00+08:00
+Features: admin delete user account; admin delete seminar registration + Google Drive files
