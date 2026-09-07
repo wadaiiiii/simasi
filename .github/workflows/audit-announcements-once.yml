@@ -22,33 +22,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error \
-            "https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys?reveal=true" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" >/tmp/keys.json
+          curl --fail-with-body --silent --show-error "https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys?reveal=true" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" >/tmp/keys.json
           PUBLISHABLE=$(jq -r '[.[] | select(.type=="publishable") | .api_key][0] // empty' /tmp/keys.json)
+          LEGACY_ANON=$(jq -r '[.[] | select(.name=="anon" or .type=="anon") | .api_key][0] // empty' /tmp/keys.json)
           SERVICE=$(jq -r '[.[] | select(.name=="service_role") | .api_key][0] // empty' /tmp/keys.json)
-          test -n "$PUBLISHABLE" && test -n "$SERVICE"
-          echo "::add-mask::$PUBLISHABLE"; echo "::add-mask::$SERVICE"
+          test -n "$PUBLISHABLE" && test -n "$LEGACY_ANON" && test -n "$SERVICE"
+          for x in "$PUBLISHABLE" "$LEGACY_ANON" "$SERVICE"; do echo "::add-mask::$x"; done
           echo "PUBLISHABLE=$PUBLISHABLE" >> "$GITHUB_ENV"
+          echo "LEGACY_ANON=$LEGACY_ANON" >> "$GITHUB_ENV"
           echo "SERVICE=$SERVICE" >> "$GITHUB_ENV"
-      - name: Compare service and frontend-public visibility
+      - name: Compare frontend key modes
         shell: bash
         run: |
           set -euo pipefail
-          curl --silent --show-error "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&order=created_at.desc" \
-            -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" >/tmp/all.json
-          curl --silent --show-error -D /tmp/pub.headers "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&is_active=eq.true&order=tanggal.desc" \
-            -H "apikey: $PUBLISHABLE" -H "Authorization: Bearer $PUBLISHABLE" >/tmp/pub.json
-          ALL_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/all.json)
-          ACTIVE_COUNT=$(jq '[.[] | select(.is_active==true)] | length' /tmp/all.json 2>/dev/null || echo 0)
+          URL="$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active&is_active=eq.true&order=tanggal.desc"
+          curl --silent --show-error "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active&order=created_at.desc" -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" >/tmp/all.json
+          ACTIVE_COUNT=$(jq '[.[] | select(.is_active==true)] | length' /tmp/all.json)
+
+          PUB_HTTP=$(curl --silent --show-error -o /tmp/pub.json -w '%{http_code}' "$URL" -H "apikey: $PUBLISHABLE")
+          ANON_HTTP=$(curl --silent --show-error -o /tmp/anon.json -w '%{http_code}' "$URL" -H "apikey: $LEGACY_ANON" -H "Authorization: Bearer $LEGACY_ANON")
           PUB_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/pub.json)
-          PUB_HTTP=$(awk 'NR==1{print $2}' /tmp/pub.headers)
-          echo "SERVICE_TOTAL=$ALL_COUNT ACTIVE_TOTAL=$ACTIVE_COUNT PUBLISHABLE_HTTP=$PUB_HTTP PUBLISHABLE_TOTAL=$PUB_COUNT"
-          echo "### Academic Info Frontend Audit" >> "$GITHUB_STEP_SUMMARY"
-          echo "- total_service_visible: $ALL_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "- active_service_visible: $ACTIVE_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "- frontend_publishable_http: $PUB_HTTP" >> "$GITHUB_STEP_SUMMARY"
-          echo "- frontend_active_visible: $PUB_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "- frontend_body: $(jq -c 'if type==\"array\" then map({judul,tanggal,is_active}) else . end' /tmp/pub.json)" >> "$GITHUB_STEP_SUMMARY"
-          test "$PUB_HTTP" = "200"
-          test "$PUB_COUNT" -eq "$ACTIVE_COUNT"
+          ANON_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/anon.json)
+          echo "ACTIVE=$ACTIVE_COUNT PUBLISHABLE_HTTP=$PUB_HTTP PUBLISHABLE_COUNT=$PUB_COUNT LEGACY_HTTP=$ANON_HTTP LEGACY_COUNT=$ANON_COUNT"
+          echo "Publishable body: $(cat /tmp/pub.json)"
+          echo "Legacy body: $(cat /tmp/anon.json)"
+          echo "### Academic Info Key Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "- active_service: $ACTIVE_COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "- publishable: HTTP $PUB_HTTP / $PUB_COUNT rows" >> "$GITHUB_STEP_SUMMARY"
+          echo "- legacy anon: HTTP $ANON_HTTP / $ANON_COUNT rows" >> "$GITHUB_STEP_SUMMARY"
+          test "$ANON_HTTP" = "200"
+          test "$ANON_COUNT" -eq "$ACTIVE_COUNT"
