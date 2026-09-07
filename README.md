@@ -1,96 +1,58 @@
-# SIMASI
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-**Sistem Informasi Manajemen Kuliah dan Skripsi** untuk FMIPA Universitas Sulawesi Barat.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-Stack:
-- Vite + Vanilla JavaScript
-- Tailwind CSS via CDN
-- Supabase Auth + PostgreSQL + Storage
-- GitHub
-- Vercel
+## About Laravel
 
-## Fitur MVP
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-- SPA tanpa reload halaman
-- Dashboard statistik dan pengumuman
-- Validasi syarat skripsi (>=110 SKS + Metode Penelitian)
-- Pengajuan judul skripsi
-- Pendaftaran Seminar & Tugas Akhir dua tahap
-- Prodi: Matematika, Statistika, Aktuaria, Bioteknologi
-- Upload/URL dokumen persyaratan
-- Dokumen kondisional Ujian Tutup Skripsi
-- Logbook bimbingan
-- Laporan dan rekap nilai
-- Export CSV dan print/PDF
-- Supabase Auth
-- Role mahasiswa/dosen/admin
-- Row Level Security
-- Mode Demo bila Supabase belum dikonfigurasi
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-## Jalankan Lokal
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
+
+## Learning Laravel
+
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+
+In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+
+You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+
+## Agentic Development
+
+Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
 
 ```bash
-npm install
-npm run dev
+composer require laravel/boost --dev
+
+php artisan boost:install
 ```
 
-## Konfigurasi Supabase
+Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
-Untuk pengguna di Indonesia, gunakan region terdekat yang tersedia, misalnya Southeast Asia (Singapore).
+## Contributing
 
-Urutan setup yang direkomendasikan:
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-1. Buat project Supabase.
-2. Jalankan `supabase/schema.sql` melalui SQL Editor.
-3. Jalankan `supabase/security_patch.sql` untuk hardening hak akses.
-4. Opsional: jalankan `supabase/seed.sql` untuk data demo awal.
-5. Tambahkan environment variable ke Vercel:
+## Code of Conduct
 
-```env
-VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
-```
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-Panduan rinci tersedia di `SUPABASE_SETUP.md`.
+## Security Vulnerabilities
 
-Jangan pernah memasukkan `service_role`, secret key, database password, atau access token ke frontend/GitHub.
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-## Role
+## License
 
-User baru otomatis mendapat role `mahasiswa`. Ubah akun staff hanya melalui SQL/admin tooling terpercaya:
-
-```sql
-update public.profiles set role = 'dosen' where email = 'dosen@unsulbar.ac.id';
-update public.profiles set role = 'admin' where email = 'admin@unsulbar.ac.id';
-```
-
-`security_patch.sql` membatasi update profil dari browser agar user biasa tidak dapat menaikkan role sendiri.
-
-## Vercel
-
-Hubungkan repository GitHub `wadaiiiii/simasi` ke project Vercel SIMASI dengan production branch `main`, lalu tambahkan:
-
-```text
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-```
-
-untuk Production dan Preview.
-
-## Storage
-
-`schema.sql` membuat bucket private `seminar-documents` dengan batas 10 MB untuk PDF/JPEG/PNG.
-
-## Keamanan
-
-- RLS aktif pada tabel akademik.
-- Storage seminar bersifat private.
-- Mahasiswa hanya mengakses data miliknya.
-- Dosen/Admin memiliki akses sesuai role.
-- Role tidak dapat dinaikkan sendiri dari browser setelah `security_patch.sql` dijalankan.
-- Catatan dosen dan status approval logbook dilindungi dari update mahasiswa.
-- Dashboard memakai RPC agregat agar data mahasiswa tidak dibuka sebagai tabel publik.
-
-## Mode Demo
-
-Tanpa environment variable Supabase, aplikasi otomatis memakai data demo agar UI tetap dapat diuji di Vercel.
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
