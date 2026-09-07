@@ -1,5 +1,5 @@
 SIMASI Supabase production release trigger
-Timestamp: 2026-09-08T02:30:00+08:00
+Timestamp: 2026-09-08T02:43:00+08:00
 Database migration: staff program-study scoped RLS
 Edge Functions: admin-users + preview-seminar-drive + existing seminar functions
-Reason: Dosen/Staf hanya boleh mengelola pengajuan mahasiswa pada program studinya sendiri
+Reason: staff initial password uses SIMASI@###### and must be changed on first login
