@@ -103,34 +103,103 @@ jobs:
           node --check src/enhancements.js
           node --check src/supabase.js
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Bind existing SIMASI project by ID
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-
-      - name: Pull production project settings
-        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
-
-      - name: Build production once
-        run: vercel build --prod --token "$VERCEL_TOKEN"
+      - name: Build static production bundle
+        run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
-      - name: Deploy prebuilt production
+      - name: Prepare Vercel deployment payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const root = path.resolve('dist')
+          const files = []
+          const walk = (dir) => {
+            for (const name of fs.readdirSync(dir)) {
+              const full = path.join(dir, name)
+              const stat = fs.statSync(full)
+              if (stat.isDirectory()) walk(full)
+              else files.push({
+                file: path.relative(root, full).split(path.sep).join('/'),
+                data: fs.readFileSync(full).toString('base64'),
+                encoding: 'base64'
+              })
+            }
+          }
+          walk(root)
+          if (!files.length) throw new Error('dist kosong')
+          const body = {
+            name: process.env.VERCEL_PROJECT_NAME || 'simasi',
+            project: process.env.VERCEL_PROJECT_ID,
+            target: 'production',
+            files,
+            gitMetadata: {
+              remoteUrl: 'https://github.com/wadaiiiii/simasi',
+              commitMessage: process.env.GITHUB_EVENT_HEAD_COMMIT_MESSAGE || 'SIMASI production release',
+              commitRef: 'main',
+              commitSha: process.env.GITHUB_SHA,
+              dirty: false,
+              ci: true,
+              ciType: 'github-actions',
+              ciGitRepoVisibility: 'public',
+              rootDirectory: ''
+            }
+          }
+          fs.writeFileSync('/tmp/vercel-deploy.json', JSON.stringify(body))
+          console.log(`Prepared ${files.length} files for Vercel REST deployment.`)
+          NODE
+
+      - name: Create one production deployment via REST API
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
-          URL=$(vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN")
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
-          echo "- Project: $VERCEL_PROJECT_NAME" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
-          echo '- Canonical domain: https://simasimipa.vercel.app' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Auto deployment remains disabled by vercel.json' >> "$GITHUB_STEP_SUMMARY"
+          HTTP=$(curl --silent --show-error -o /tmp/deployment.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v13/deployments?teamId=${VERCEL_ORG_ID}&forceNew=1&skipAutoDetectionConfirmation=1" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/vercel-deploy.json)
+          echo "Create deployment API: HTTP ${HTTP}"
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "201" ]; then
+            echo "Vercel deployment error: $(jq -r '.error.message // .message // "unknown error"' /tmp/deployment.json)"
+            exit 1
+          fi
+          DEPLOYMENT_ID=$(jq -r '.id // empty' /tmp/deployment.json)
+          DEPLOYMENT_URL=$(jq -r '.url // empty' /tmp/deployment.json)
+          test -n "$DEPLOYMENT_ID" || { echo 'Deployment ID tidak tersedia'; exit 1; }
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+          echo "Created deployment: $DEPLOYMENT_ID"
+
+      - name: Wait until deployment ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID='${{ steps.deploy.outputs.deployment_id }}'
+          for i in $(seq 1 30); do
+            HTTP=$(curl --silent --show-error -o /tmp/deployment-status.json -w '%{http_code}' \
+              "https://api.vercel.com/v13/deployments/${ID}?teamId=${VERCEL_ORG_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}")
+            test "$HTTP" = "200" || { echo "Status API HTTP $HTTP"; exit 1; }
+            STATE=$(jq -r '.readyState // .state // "UNKNOWN"' /tmp/deployment-status.json)
+            echo "Deployment state: $STATE"
+            if [ "$STATE" = "READY" ]; then
+              URL=$(jq -r '.url // empty' /tmp/deployment-status.json)
+              echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
+              echo "- Project: $VERCEL_PROJECT_NAME" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Deployment: https://$URL" >> "$GITHUB_STEP_SUMMARY"
+              echo '- Canonical domain: https://simasimipa.vercel.app' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
+              echo "Deployment gagal dengan state $STATE"
+              exit 1
+            fi
+            sleep 4
+          done
+          echo 'Timeout menunggu deployment READY'
+          exit 1
