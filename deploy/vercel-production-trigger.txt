@@ -1,4 +1,5 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
 Frontend: focused Seminar Proposal/Seminar Hasil + admin import + soft UI
-Triggered: 2026-09-07T20:40:00+08:00
+Retry after lockfile workflow fix
+Triggered: 2026-09-07T20:45:00+08:00
