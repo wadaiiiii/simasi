@@ -10,7 +10,15 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLogin(): View { return view('auth.login'); }
+    public function showLogin(Request $request): View
+    {
+        $next = $request->query('next');
+        if (is_string($next) && str_starts_with($next, '/') && ! str_starts_with($next, '//')) {
+            $request->session()->put('url.intended', url($next));
+        }
+        return view('auth.login');
+    }
+
     public function showRegister(): View { return view('auth.register'); }
 
     public function login(Request $request, SupabaseAuthService $auth, SupabaseDataService $data): RedirectResponse
@@ -40,9 +48,9 @@ class AuthController extends Controller
                 $user = $auth->persistSession($payload);
                 $this->loadProfile($data, $user, $validated['email']);
                 $request->session()->regenerate();
-                return redirect()->route('dashboard')->with('status', 'Akun mahasiswa berhasil dibuat.');
+                return redirect()->intended(route('seminar.index'))->with('status', 'Akun mahasiswa berhasil dibuat.');
             }
-            return redirect()->route('login')->with('status', 'Akun berhasil dibuat. Silakan konfirmasi email bila diminta, lalu login.');
+            return redirect()->route('login', ['next'=>'/seminar'])->with('status', 'Akun berhasil dibuat. Silakan konfirmasi email bila diminta, lalu login.');
         } catch (\Throwable $e) {
             return back()->withInput($request->except(['password','password_confirmation']))->with('error', $e->getMessage());
         }
@@ -53,7 +61,7 @@ class AuthController extends Controller
         $auth->logout(session('simasi_access_token'));
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('login')->with('status', 'Anda telah logout.');
+        return redirect()->route('dashboard')->with('status', 'Anda telah logout.');
     }
 
     private function loadProfile(SupabaseDataService $data, array $user, string $fallbackEmail): void
