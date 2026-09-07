@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: one-time staff temporary password credential modal
+Frontend: no-email password creation/reset flow
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T02:44:00+08:00
-Reason: show SIMASI@###### password once after admin creates staff account
+Triggered: 2026-09-08T02:52:00+08:00
+Reason: reset credentials are shown once in admin; no password email is sent
