@@ -15,36 +15,18 @@ function pemToArrayBuffer(pem: string) {
   return bytes.buffer
 }
 
-async function tokenFromRefreshToken() {
-  const clientId = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')
-  const clientSecret = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')
-  const refreshToken = Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')
-  if (!clientId || !clientSecret || !refreshToken) return null
-  const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-    grant_type: 'refresh_token'
-  })
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  })
-  if (!res.ok) throw new Error(`Google OAuth refresh failed (${res.status})`)
-  const data = await res.json()
-  return data.access_token as string
-}
-
 async function tokenFromServiceAccount() {
   const email = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL')
   const privateKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')?.replaceAll('\\n', '\n')
-  if (!email || !privateKey) return null
+  if (!email || !privateKey) throw new Error('SIMASI Google Drive service account is not configured')
+
   const now = Math.floor(Date.now() / 1000)
   const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
   const payload = b64url(JSON.stringify({
     iss: email,
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    // Scope Drive penuh hanya berlaku untuk resource yang memang dapat diakses
+    // oleh service account. Folder lain milik FMIPA tidak otomatis terbuka.
+    scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600
@@ -74,11 +56,22 @@ async function tokenFromServiceAccount() {
 }
 
 export async function getDriveToken() {
-  return await tokenFromRefreshToken() || await tokenFromServiceAccount() || (() => { throw new Error('Google Drive credentials are not configured') })()
+  return await tokenFromServiceAccount()
 }
 
 function q(value: string) {
   return value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")
+}
+
+export async function verifyFolderAccess(token: string, folderId: string) {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,capabilities(canAddChildren,canEdit)`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  if (!res.ok) throw new Error(`Google Drive root folder access failed (${res.status})`)
+  const folder = await res.json()
+  if (folder.mimeType !== 'application/vnd.google-apps.folder') throw new Error('Configured Drive root is not a folder')
+  if (!folder.capabilities?.canAddChildren) throw new Error('SIMASI service account does not have permission to add files to the Drive root folder')
+  return folder
 }
 
 export async function findOrCreateFolder(token: string, name: string, parentId: string) {
