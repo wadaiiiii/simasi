@@ -1,0 +1,94 @@
+name: Vercel Production Release (One Shot)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/vercel-production-trigger.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simasi-vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: jdptpfpmelmaviucaioq
+      SUPABASE_URL: https://jdptpfpmelmaviucaioq.supabase.co
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TEAM_SLUG: andiseppewali-3458s-projects
+      VERCEL_PROJECT_NAME: simasi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo 'Missing SUPABASE_ACCESS_TOKEN'; exit 1; }
+          test -n "${VERCEL_TOKEN:-}" || { echo 'Missing VERCEL_TOKEN'; exit 1; }
+
+      - name: Resolve Supabase publishable key securely
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/api-keys?reveal=true" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" >/tmp/api-keys.json
+          KEY=$(jq -r '[.[] | select(.type=="publishable") | .api_key][0] // [.[] | select(.name=="anon" or .type=="anon") | .api_key][0] // empty' /tmp/api-keys.json)
+          test -n "$KEY" || { echo 'No frontend-safe Supabase API key found'; exit 1; }
+          echo "::add-mask::$KEY"
+          echo "VITE_SUPABASE_PUBLISHABLE_KEY=$KEY" >> "$GITHUB_ENV"
+          echo "VITE_SUPABASE_URL=$SUPABASE_URL" >> "$GITHUB_ENV"
+          rm -f /tmp/api-keys.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check focused frontend
+        run: |
+          node --check src/main.js
+          node --check src/enhancements.js
+          node --check src/supabase.js
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Link existing SIMASI project
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel link --yes --project "$VERCEL_PROJECT_NAME" --scope "$VERCEL_TEAM_SLUG" --token "$VERCEL_TOKEN"
+
+      - name: Pull production project settings
+        run: vercel pull --yes --environment=production --scope "$VERCEL_TEAM_SLUG" --token "$VERCEL_TOKEN"
+
+      - name: Build production once
+        run: vercel build --prod --scope "$VERCEL_TEAM_SLUG" --token "$VERCEL_TOKEN"
+        env:
+          VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Deploy prebuilt production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL=$(vercel deploy --prebuilt --prod --scope "$VERCEL_TEAM_SLUG" --token "$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo '### SIMASI production release' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment: $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Canonical domain: https://simasimipa.vercel.app' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Auto deployment remains disabled by vercel.json' >> "$GITHUB_STEP_SUMMARY"
