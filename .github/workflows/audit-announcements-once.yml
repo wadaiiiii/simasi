@@ -25,34 +25,30 @@ jobs:
           curl --fail-with-body --silent --show-error \
             "https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys?reveal=true" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" >/tmp/keys.json
-          ANON=$(jq -r '[.[] | select(.name=="anon") | .api_key][0] // [.[] | select(.type=="publishable") | .api_key][0] // empty' /tmp/keys.json)
+          PUBLISHABLE=$(jq -r '[.[] | select(.type=="publishable") | .api_key][0] // empty' /tmp/keys.json)
           SERVICE=$(jq -r '[.[] | select(.name=="service_role") | .api_key][0] // empty' /tmp/keys.json)
-          test -n "$ANON" && test -n "$SERVICE"
-          echo "::add-mask::$ANON"; echo "::add-mask::$SERVICE"
-          echo "ANON=$ANON" >> "$GITHUB_ENV"
+          test -n "$PUBLISHABLE" && test -n "$SERVICE"
+          echo "::add-mask::$PUBLISHABLE"; echo "::add-mask::$SERVICE"
+          echo "PUBLISHABLE=$PUBLISHABLE" >> "$GITHUB_ENV"
           echo "SERVICE=$SERVICE" >> "$GITHUB_ENV"
-      - name: Compare service and public visibility
+      - name: Compare service and frontend-public visibility
         shell: bash
         run: |
           set -euo pipefail
           curl --silent --show-error "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&order=created_at.desc" \
             -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" >/tmp/all.json
-          curl --silent --show-error -D /tmp/public.headers "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&is_active=eq.true&order=tanggal.desc" \
-            -H "apikey: $ANON" >/tmp/public.json
+          curl --silent --show-error -D /tmp/pub.headers "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&is_active=eq.true&order=tanggal.desc" \
+            -H "apikey: $PUBLISHABLE" >/tmp/pub.json
           ALL_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/all.json)
           ACTIVE_COUNT=$(jq '[.[] | select(.is_active==true)] | length' /tmp/all.json 2>/dev/null || echo 0)
-          PUBLIC_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/public.json)
-          HTTP=$(awk 'NR==1{print $2}' /tmp/public.headers)
-          echo "### Academic Info Audit" >> "$GITHUB_STEP_SUMMARY"
+          PUB_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/pub.json)
+          PUB_HTTP=$(awk 'NR==1{print $2}' /tmp/pub.headers)
+          echo "SERVICE_TOTAL=$ALL_COUNT ACTIVE_TOTAL=$ACTIVE_COUNT PUBLISHABLE_HTTP=$PUB_HTTP PUBLISHABLE_TOTAL=$PUB_COUNT"
+          echo "### Academic Info Frontend Audit" >> "$GITHUB_STEP_SUMMARY"
           echo "- total_service_visible: $ALL_COUNT" >> "$GITHUB_STEP_SUMMARY"
           echo "- active_service_visible: $ACTIVE_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "- public_http: $HTTP" >> "$GITHUB_STEP_SUMMARY"
-          echo "- public_active_visible: $PUBLIC_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "- service_latest_titles:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- frontend_publishable_http: $PUB_HTTP" >> "$GITHUB_STEP_SUMMARY"
+          echo "- frontend_active_visible: $PUB_COUNT" >> "$GITHUB_STEP_SUMMARY"
           jq -r '.[0:5][]? | "  - [active=\(.is_active)] \(.tanggal) | \(.judul)"' /tmp/all.json >> "$GITHUB_STEP_SUMMARY"
-          echo "SERVICE_TOTAL=$ALL_COUNT ACTIVE_TOTAL=$ACTIVE_COUNT PUBLIC_HTTP=$HTTP PUBLIC_TOTAL=$PUBLIC_COUNT"
-          if [ "$ACTIVE_COUNT" -gt 0 ] && [ "$PUBLIC_COUNT" -eq 0 ]; then
-            echo "PUBLIC_VISIBILITY_BROKEN=true" >> "$GITHUB_ENV"
-          else
-            echo "PUBLIC_VISIBILITY_BROKEN=false" >> "$GITHUB_ENV"
-          fi
+          test "$PUB_HTTP" = "200"
+          test "$PUB_COUNT" -eq "$ACTIVE_COUNT"
