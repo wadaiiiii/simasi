@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: SIMASI v5 public-first boot, simplified landing, forced Unsulbar academic logo, stable private router
+Frontend: SIMASI brand-gradient UI refresh using coral, cyan, navy, royal blue, violet; mobile-first responsive styling
 Deployment path: Vercel REST API from built dist
-Triggered: 2026-09-07T23:16:00+08:00
-Reason: root must never expose admin/private content; deploy simplified landing and official logo URL
+Triggered: 2026-09-07T23:56:00+08:00
+Reason: apply approved SIMASI brand palette across landing, login, dashboard, forms, cards and responsive mobile UX
