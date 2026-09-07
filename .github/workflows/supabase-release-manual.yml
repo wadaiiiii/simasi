@@ -55,31 +55,34 @@ jobs:
           set -euo pipefail
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/student_import_drive.sql
 
-      - name: Configure Google Drive secrets (OAuth)
-        if: ${{ inputs.configure_google_drive && secrets.GOOGLE_OAUTH_CLIENT_ID != '' && secrets.GOOGLE_OAUTH_CLIENT_SECRET != '' && secrets.GOOGLE_OAUTH_REFRESH_TOKEN != '' }}
+      - name: Configure Google Drive secrets
+        if: ${{ inputs.configure_google_drive }}
+        shell: bash
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
-        run: |
-          set -euo pipefail
-          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
-            GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
-            GOOGLE_OAUTH_CLIENT_ID="$GOOGLE_OAUTH_CLIENT_ID" \
-            GOOGLE_OAUTH_CLIENT_SECRET="$GOOGLE_OAUTH_CLIENT_SECRET" \
-            GOOGLE_OAUTH_REFRESH_TOKEN="$GOOGLE_OAUTH_REFRESH_TOKEN"
-
-      - name: Configure Google Drive secrets (service account fallback)
-        if: ${{ inputs.configure_google_drive && secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL != '' && secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY != '' }}
-        env:
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
           GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
-            GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
-            GOOGLE_SERVICE_ACCOUNT_EMAIL="$GOOGLE_SERVICE_ACCOUNT_EMAIL" \
-            GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+          if [[ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" && -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" && -n "${GOOGLE_OAUTH_REFRESH_TOKEN:-}" ]]; then
+            echo "Configuring Google Drive via OAuth refresh token"
+            supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+              GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
+              GOOGLE_OAUTH_CLIENT_ID="$GOOGLE_OAUTH_CLIENT_ID" \
+              GOOGLE_OAUTH_CLIENT_SECRET="$GOOGLE_OAUTH_CLIENT_SECRET" \
+              GOOGLE_OAUTH_REFRESH_TOKEN="$GOOGLE_OAUTH_REFRESH_TOKEN"
+          elif [[ -n "${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}" && -n "${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:-}" ]]; then
+            echo "Configuring Google Drive via service account"
+            supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+              GOOGLE_DRIVE_ROOT_FOLDER_ID="$GOOGLE_DRIVE_ROOT_FOLDER_ID" \
+              GOOGLE_SERVICE_ACCOUNT_EMAIL="$GOOGLE_SERVICE_ACCOUNT_EMAIL" \
+              GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+          else
+            echo "Google Drive credentials are incomplete. Provide either OAuth trio or service-account pair."
+            exit 1
+          fi
 
       - name: Deploy import-mahasiswa
         run: supabase functions deploy import-mahasiswa --project-ref "$SUPABASE_PROJECT_REF"
@@ -90,6 +93,11 @@ jobs:
       - name: Deploy upload-seminar-drive
         run: supabase functions deploy upload-seminar-drive --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Verify deployed Edge Functions
+        run: |
+          set -euo pipefail
+          supabase functions list --project-ref "$SUPABASE_PROJECT_REF"
+
       - name: Release summary
         run: |
           echo "### SIMASI Supabase release" >> "$GITHUB_STEP_SUMMARY"
@@ -97,4 +105,5 @@ jobs:
           echo "- Database script: ${{ inputs.apply_database }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Google Drive secrets requested: ${{ inputs.configure_google_drive }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Functions: import-mahasiswa, change-initial-password, upload-seminar-drive" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Seminar uploads: PDF only, max 2 MB" >> "$GITHUB_STEP_SUMMARY"
           echo "- Drive root: $GOOGLE_DRIVE_ROOT_FOLDER_ID" >> "$GITHUB_STEP_SUMMARY"
