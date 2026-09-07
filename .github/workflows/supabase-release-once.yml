@@ -41,14 +41,18 @@ jobs:
       - name: Install Supabase CLI
         run: npm install --global supabase@latest
 
-      - name: Apply SIMASI database migration via Management API
+      - name: Apply SIMASI database migrations via Management API
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import json
           from pathlib import Path
-          sql = Path('supabase/student_import_drive.sql').read_text()
+          sql = "\n\n".join([
+              Path('supabase/student_import_drive.sql').read_text(),
+              Path('supabase/admin_portal.sql').read_text(),
+              Path('supabase/seminar_lifecycle.sql').read_text(),
+          ])
           Path('/tmp/simasi-query.json').write_text(json.dumps({'query': sql, 'read_only': False}))
           PY
           curl --fail-with-body --silent --show-error \
@@ -86,7 +90,8 @@ jobs:
       - name: Summary
         run: |
           echo '### SIMASI backend release' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Database migration: applied through Supabase Management API' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Database lifecycle: applied through Supabase Management API' >> "$GITHUB_STEP_SUMMARY"
           echo '- Google Drive: FMIPA OAuth verified against configured SIMASI folder' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Seminar upload: PDF only, max 2 MB' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Seminar upload: PDF only, max 2 MB, metadata persisted by trusted Edge Function' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Lifecycle: diajukan → diverifikasi/perbaikan → lengkap' >> "$GITHUB_STEP_SUMMARY"
           echo '- Edge Functions: import-mahasiswa, change-initial-password, upload-seminar-drive' >> "$GITHUB_STEP_SUMMARY"
