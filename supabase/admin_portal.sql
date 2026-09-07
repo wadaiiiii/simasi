@@ -19,15 +19,31 @@ create index if not exists idx_berkas_seminar_pendaftaran on public.berkas_semin
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_mahasiswa_user_id on public.mahasiswa(user_id);
 
--- Landing page publik membaca hanya informasi akademik yang aktif melalui RLS.
--- Policy public read sudah membatasi anon ke is_active=true; grant SELECT ini
--- dibutuhkan PostgREST agar role anon dapat mengeksekusi SELECT pada tabel.
+-- Data Informasi Akademik harus bisa dibaca landing publik,
+-- tetapi hanya baris yang is_active=true.
 grant select on table public.pengumuman to anon, authenticated;
 
--- Pastikan policy publik tetap idempotent dan eksplisit.
+-- Hapus policy gabungan lama. Jangan panggil is_staff() dari policy anon,
+-- karena role anon memang tidak diberi EXECUTE ke helper otorisasi staf.
 drop policy if exists "pengumuman public read" on public.pengumuman;
-create policy "pengumuman public read"
+drop policy if exists "pengumuman anon read active" on public.pengumuman;
+drop policy if exists "pengumuman authenticated read active" on public.pengumuman;
+drop policy if exists "pengumuman staff read all" on public.pengumuman;
+
+create policy "pengumuman anon read active"
 on public.pengumuman
 for select
-to anon, authenticated
-using (is_active = true or public.is_staff());
+to anon
+using (is_active = true);
+
+create policy "pengumuman authenticated read active"
+on public.pengumuman
+for select
+to authenticated
+using (is_active = true);
+
+create policy "pengumuman staff read all"
+on public.pengumuman
+for select
+to authenticated
+using (public.is_staff());
