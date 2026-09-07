@@ -1,8 +1,8 @@
 # Setup Supabase untuk SIMASI
 
 ## Project
-- Nama yang disarankan: `simasi-fmipa`
-- Region yang disarankan untuk pengguna Indonesia: Southeast Asia (Singapore)
+- Project ref: `jdptpfpmelmaviucaioq`
+- Region: Southeast Asia (Singapore)
 
 ## Urutan SQL
 Jalankan melalui Supabase SQL Editor secara berurutan:
@@ -19,45 +19,59 @@ Jalankan melalui Supabase SQL Editor secara berurutan:
 - endpoint cek kelayakan skripsi menjadi authenticated-only dan hanya untuk data sendiri, kecuali dosen/admin.
 
 ## Environment Variables Vercel
-Tambahkan ke project Vercel SIMASI pada Production dan Preview:
+Tambahkan pada Production dan Preview:
 
 ```text
 VITE_SUPABASE_URL=<Project URL Supabase>
 VITE_SUPABASE_PUBLISHABLE_KEY=<Publishable key Supabase>
 ```
 
-Frontend masih menerima `VITE_SUPABASE_ANON_KEY` untuk kompatibilitas deployment lama, tetapi deployment baru sebaiknya memakai publishable key.
-
-Jangan pernah memasukkan `service_role`, secret key, database password, Google OAuth secret, private key, atau access token ke repository/frontend.
+Frontend masih menerima `VITE_SUPABASE_ANON_KEY` sebagai fallback deployment lama. Jangan pernah menyimpan service role, secret key, database password, service-account private key, atau access token di frontend/repository.
 
 ## Edge Functions
-Deploy tiga function berikut dari repository:
+Tiga fungsi produksi:
 
-```bash
-supabase functions deploy import-mahasiswa
-supabase functions deploy change-initial-password
-supabase functions deploy upload-seminar-drive
+```text
+import-mahasiswa
+change-initial-password
+upload-seminar-drive
 ```
 
-Function `import-mahasiswa` hanya menerima caller dengan role `admin`. Function membuat akun mahasiswa baru menggunakan identitas internal `<nim>@students.simasi.local`; pada UI mahasiswa tetap login menggunakan NIM.
+Deployment disiapkan lewat workflow manual:
+
+```text
+.github/workflows/supabase-release-manual.yml
+```
+
+Workflow hanya berjalan saat dipicu manual dari GitHub Actions, sehingga tidak melakukan deploy pada setiap commit.
+
+## Import mahasiswa
+Function `import-mahasiswa` hanya menerima caller role `admin`.
+
+Data yang digunakan:
+- NIM
+- Nama
+- Program Studi
 
 Akun baru:
 - username UI: NIM;
 - password awal: NIM;
 - email internal: `<nim>@students.simasi.local`;
 - `must_change_password=true`;
-- setelah login pertama pengguna wajib mengganti password minimal 8 karakter.
+- setelah login pertama pengguna wajib mengganti password minimal 8 karakter dan tidak boleh sama dengan NIM.
 
-Import ulang tidak mereset password mahasiswa yang akunnya sudah tertaut; data Nama/Program Studi diperbarui tanpa mengubah password aktif.
+Import ulang tidak mereset password mahasiswa yang sudah memiliki akun.
 
-## Google Drive sebagai penyimpanan berkas
-Folder induk SIMASI:
+## Google Drive — service account khusus SIMASI
+Folder induk permanen:
 
 ```text
 Folder ID: 19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
 ```
 
-Struktur dibuat otomatis:
+SIMASI hanya menggunakan service account khusus. OAuth akun utama FMIPA tidak dipakai.
+
+Struktur otomatis:
 
 ```text
 SIMASI/
@@ -69,50 +83,57 @@ SIMASI/
             └── YYYY-MM-DD_<id-pendaftaran>/
 ```
 
-### Kredensial Google Drive yang disarankan
-Untuk folder My Drive milik akun FMIPA, gunakan OAuth refresh token akun pemilik/pengelola folder agar file benar-benar dibuat atas akun Google Workspace yang memiliki kuota Drive.
+Google Drive root harus diubah menjadi **Restricted**, kemudian share hanya folder SIMASI tersebut kepada email service account sebagai **Editor**. Folder Drive lain tidak perlu dibagikan.
 
-Simpan hanya sebagai Supabase Edge Function secrets:
-
-```bash
-supabase secrets set GOOGLE_DRIVE_ROOT_FOLDER_ID=19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
-supabase secrets set GOOGLE_OAUTH_CLIENT_ID=<oauth-client-id>
-supabase secrets set GOOGLE_OAUTH_CLIENT_SECRET=<oauth-client-secret>
-supabase secrets set GOOGLE_OAUTH_REFRESH_TOKEN=<offline-refresh-token>
-```
-
-Function juga mendukung fallback service account melalui:
+Secrets backend:
 
 ```text
 GOOGLE_SERVICE_ACCOUNT_EMAIL
 GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+GOOGLE_DRIVE_ROOT_FOLDER_ID=19Pi-nie5ODUBDeoPcnEMGVu-wkiPDwrv
 ```
 
-Namun untuk folder My Drive biasa, OAuth akun Workspace lebih disarankan. Service account paling cocok bila tujuan berada pada Shared Drive atau dikonfigurasi dengan domain-wide delegation.
+Service account meminta scope Google Drive API, tetapi scope tersebut tetap tunduk pada permission Drive service account. Karena yang dibagikan hanya folder SIMASI, folder pribadi lain tidak otomatis dapat diakses.
 
-Ubah akses umum folder Drive menjadi **Restricted**. Backend Google OAuth yang diberi izin akan tetap dapat mengunggah file; mahasiswa tidak perlu memperoleh akses Editor ke folder induk.
+## Berkas seminar
+Aturan produksi:
+
+```text
+Format: PDF saja
+Ukuran: maksimal 2 MB per file
+Jenis: Seminar Proposal / Seminar Hasil
+```
+
+Function `upload-seminar-drive` memverifikasi bahwa service account dapat menambahkan file ke folder root SIMASI sebelum membuat struktur subfolder dan upload dokumen.
+
+## GitHub Actions Secrets
+Repository `wadaiiiii/simasi` membutuhkan secrets berikut untuk workflow backend:
+
+```text
+SUPABASE_ACCESS_TOKEN
+SUPABASE_DB_URL
+GOOGLE_SERVICE_ACCOUNT_EMAIL
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+```
+
+Jangan kirim nilai secret tersebut ke chat dan jangan commit ke repository.
 
 ## Auth dan role
-User baru dari proses import otomatis menjadi `mahasiswa`.
-
-Role `dosen` atau `admin` hanya dipromosikan lewat SQL/admin tooling terpercaya:
+Role `dosen` atau `admin` hanya dipromosikan melalui SQL/admin tooling terpercaya:
 
 ```sql
 update public.profiles set role='dosen' where email='dosen@unsulbar.ac.id';
 update public.profiles set role='admin' where email='admin@unsulbar.ac.id';
 ```
 
-## Storage Supabase
-Bucket private `seminar-documents` dari schema lama tetap dipertahankan sebagai kompatibilitas/backup. Alur frontend baru mengirim file seminar ke Edge Function `upload-seminar-drive`, lalu menyimpan `drive_file_id`, `drive_folder_id`, `webViewLink`, dan `storage_provider='google_drive'` pada database.
-
-## Verifikasi setelah setup
-1. Pastikan tabel `profiles`, `mahasiswa`, `pengumuman`, `pengajuan_skripsi`, `logbook_bimbingan`, `pendaftaran_seminar`, `berkas_seminar`, dan `nilai_skripsi` tersedia.
-2. Pastikan kolom `profiles.must_change_password` tersedia.
-3. Pastikan RLS aktif dan restrictive password gate terpasang pada tabel akademik mahasiswa.
-4. Buat/promosikan satu akun admin untuk pengujian.
-5. Login admin dan buka menu **Import Data Mahasiswa**.
-6. Import Excel/PDF berisi kolom `NIM`, `Nama`, `Program Studi`.
-7. Pastikan akun mahasiswa baru dapat login dengan NIM + password NIM.
-8. Pastikan mahasiswa diarahkan mengganti password dan tidak dapat membuka layanan sensitif sebelum pergantian selesai.
-9. Upload satu berkas seminar dan pastikan file masuk ke folder Google Drive SIMASI pada struktur prodi/NIM/jenis seminar.
-10. Pastikan mahasiswa tidak dapat mengubah field `role` sendiri dan hanya melihat data miliknya.
+## Verifikasi end-to-end
+1. Jalankan workflow **Supabase Backend Release (Manual)** dengan `apply_database=true` dan `configure_google_drive=true`.
+2. Pastikan tiga Edge Function terdaftar.
+3. Login admin dan import satu data mahasiswa.
+4. Pastikan akun mahasiswa login dengan NIM + password NIM.
+5. Pastikan mahasiswa wajib mengganti password.
+6. Login ulang dengan password baru.
+7. Daftar Seminar Proposal/Seminar Hasil.
+8. Upload PDF < 2 MB.
+9. Pastikan file masuk ke folder Drive SIMASI pada struktur Program Studi/NIM/Jenis Seminar.
+10. Pastikan `berkas_seminar` menyimpan `storage_provider='google_drive'`, `drive_file_id`, `drive_folder_id`, dan link file.
