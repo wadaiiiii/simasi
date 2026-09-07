@@ -34,8 +34,9 @@ export function landingHtml(){
     </header>
 
     <main>
-      <section class="relative overflow-hidden">
+      <section class="landing-interactive relative overflow-hidden">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(235,72,93,.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(73,22,153,.10),transparent_36%)]"></div>
+        <span class="landing-orb one"></span><span class="landing-orb two"></span><span class="landing-orb three"></span>
         <div class="relative mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-5 sm:py-14 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:px-8 lg:py-16">
           <div>
             <span class="inline-flex rounded-full border border-[#0a7bb5]/15 bg-[#0a7bb5]/5 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#0a7bb5] sm:text-[11px]">Portal Akademik FMIPA</span>
