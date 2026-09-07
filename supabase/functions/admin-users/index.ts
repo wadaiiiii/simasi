@@ -1,24 +1,7 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.57.4'
 import { corsHeaders, getContext, json } from '../_shared/auth.ts'
 
-const SITE_URL = 'https://simasimipa.vercel.app'
 const ALLOWED_ROLES = ['mahasiswa', 'dosen', 'admin']
 const ALLOWED_PRODI = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']
-
-function readNamedKey(jsonName: string, legacyName: string): string {
-  const raw = Deno.env.get(jsonName)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      if (typeof parsed.default === 'string') return parsed.default
-      const first = Object.values(parsed)[0]
-      if (typeof first === 'string') return first
-    } catch (_) {}
-  }
-  const legacy = Deno.env.get(legacyName)
-  if (!legacy) throw new Error(`Missing ${jsonName}/${legacyName}`)
-  return legacy
-}
 
 function createTemporaryPassword(): string {
   const value = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
@@ -85,16 +68,48 @@ Deno.serve(async (req) => {
       return json({ ok: true, message: 'Role user diperbarui.' })
     }
 
-    const url = Deno.env.get('SUPABASE_URL')!
-    const publishable = readNamedKey('SUPABASE_PUBLISHABLE_KEYS', 'SUPABASE_ANON_KEY')
-    const publicClient = createClient(url, publishable, { auth: { persistSession: false, autoRefreshToken: false } })
-
     if (action === 'reset_password') {
       const email = String(body.email || '').trim().toLowerCase()
-      if (!email.includes('@')) return json({ ok: false, message: 'Email tidak valid.' }, 400)
-      const reset = await publicClient.auth.resetPasswordForEmail(email, { redirectTo: SITE_URL })
-      if (reset.error) throw reset.error
-      return json({ ok: true, message: 'Email reset password telah dikirim.' })
+      if (!email.includes('@')) return json({ ok: false, message: 'Email user tidak valid.' }, 400)
+
+      const authUser = await findAuthUserByEmail(admin, email)
+      if (!authUser) return json({ ok: false, message: 'Akun Auth tidak ditemukan.' }, 404)
+      if (authUser.id === user.id) return json({ ok: false, message: 'Password akun admin yang sedang digunakan tidak dapat direset dari sesi yang sama.' }, 400)
+
+      const profileResult = await admin.from('profiles').select('id,email,full_name,nim,prodi,role').eq('id', authUser.id).maybeSingle()
+      if (profileResult.error) throw profileResult.error
+      const target = profileResult.data
+      if (!target) return json({ ok: false, message: 'Profil user tidak ditemukan.' }, 404)
+
+      const targetRole = String(target.role || '').toLowerCase()
+      const temporaryPassword = targetRole === 'mahasiswa'
+        ? String(target.nim || '').trim()
+        : createTemporaryPassword()
+
+      if (!temporaryPassword) return json({ ok: false, message: 'NIM mahasiswa belum tersedia sehingga password tidak dapat direset.' }, 400)
+
+      const authUpdate = await admin.auth.admin.updateUserById(authUser.id, { password: temporaryPassword })
+      if (authUpdate.error) throw authUpdate.error
+
+      const profileUpdate = await admin.from('profiles').update({ must_change_password: true }).eq('id', authUser.id)
+      if (profileUpdate.error) throw profileUpdate.error
+
+      const username = targetRole === 'mahasiswa' ? String(target.nim || '') : String(target.email || authUser.email || email)
+      return json({
+        ok: true,
+        user_id: authUser.id,
+        full_name: target.full_name || authUser.user_metadata?.full_name || null,
+        email: target.email || authUser.email || email,
+        username,
+        nim: target.nim || null,
+        role: targetRole,
+        prodi: target.prodi || null,
+        temporary_password: temporaryPassword,
+        must_change_password: true,
+        message: targetRole === 'mahasiswa'
+          ? 'Password mahasiswa direset ke NIM dan wajib diganti saat login pertama.'
+          : 'Password sementara baru dibuat dan wajib diganti saat login pertama.'
+      })
     }
 
     if (action === 'create_staff') {
@@ -140,17 +155,16 @@ Deno.serve(async (req) => {
       }, { onConflict: 'id' })
       if (profileWrite.error) throw profileWrite.error
 
-      const reset = await publicClient.auth.resetPasswordForEmail(email, { redirectTo: SITE_URL })
-      if (reset.error) throw reset.error
-
       return json({
         ok: true,
         user_id: userId,
         email,
+        username: email,
         prodi: requestedProdi || null,
+        role: requestedRole,
         temporary_password: temporaryPassword,
         must_change_password: true,
-        message: 'Akun staf siap. Password sementara hanya ditampilkan satu kali kepada admin.'
+        message: 'Akun staf siap. Password sementara ditampilkan satu kali kepada admin dan tidak dikirim melalui email.'
       })
     }
 
