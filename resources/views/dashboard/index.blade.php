@@ -1,0 +1,7 @@
+@extends('layouts.app')
+@section('title','Dashboard')
+@section('content')
+<div class="page-head"><div><h1>Dashboard</h1><div class="muted">Ringkasan aktivitas akademik SIMASI.</div></div><a class="btn btn-primary" href="{{ route('seminar.index') }}">Daftar Seminar</a></div>
+<div class="grid stats"><div class="card"><div class="stat-label">Mahasiswa Aktif</div><div class="stat-value">{{ $stats['mahasiswa_aktif'] ?? 0 }}</div></div><div class="card"><div class="stat-label">Judul Diajukan</div><div class="stat-value stat-accent">{{ $stats['judul_diajukan'] ?? 0 }}</div></div><div class="card"><div class="stat-label">Lulus Sidang</div><div class="stat-value">{{ $stats['lulus_sidang'] ?? 0 }}</div></div></div>
+<div class="grid two-col"><section class="card"><h2 style="margin-top:0">Pengumuman</h2><div class="list">@forelse($announcements as $item)<article class="list-item"><h3>{{ $item['judul'] }}</h3><div class="muted" style="font-size:13px">{{ $item['tanggal'] }}</div><p style="margin-bottom:0">{{ $item['isi'] }}</p></article>@empty<div class="muted">Belum ada pengumuman aktif.</div>@endforelse</div></section><aside class="card"><h2 style="margin-top:0">Akses Cepat</h2><div class="grid"><a class="btn btn-secondary" href="{{ route('kuliah.index') }}">Cek Kelayakan Skripsi</a><a class="btn btn-secondary" href="{{ route('logbook.index') }}">Tambah Logbook</a><a class="btn btn-secondary" href="{{ route('laporan.index') }}">Lihat Nilai</a></div></aside></div>
+@endsection
