@@ -1,0 +1,78 @@
+name: Vercel Alias Hard Reset
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/vercel-alias-hard-reset.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  reset-alias:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_4IWej07Hjmsjc6KzX0ZSLW4Q
+      DEPLOYMENT_ID: dpl_4SFEkTwGCoGagHnDzpCzZenZM3Zt
+      CANONICAL_DOMAIN: simasimipa.vercel.app
+    steps:
+      - name: Validate token
+        run: test -n "${VERCEL_TOKEN:-}"
+
+      - name: Remove existing canonical alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP=$(curl --silent --show-error -o /tmp/alias.json -w '%{http_code}' \
+            "https://api.vercel.com/v4/aliases/${CANONICAL_DOMAIN}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          echo "Get alias HTTP ${HTTP}"
+          if [ "$HTTP" = "200" ]; then
+            ALIAS_ID=$(jq -r '.id // empty' /tmp/alias.json)
+            if [ -n "$ALIAS_ID" ]; then
+              DEL=$(curl --silent --show-error -o /tmp/delete.json -w '%{http_code}' \
+                -X DELETE "https://api.vercel.com/v2/aliases/${ALIAS_ID}?teamId=${VERCEL_ORG_ID}" \
+                -H "Authorization: Bearer ${VERCEL_TOKEN}")
+              echo "Delete alias HTTP ${DEL}"
+              if [ "$DEL" != "200" ] && [ "$DEL" != "204" ]; then
+                cat /tmp/delete.json
+                exit 1
+              fi
+            fi
+          fi
+          sleep 5
+
+      - name: Reassign canonical alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP=$(curl --silent --show-error -o /tmp/assign.json -w '%{http_code}' \
+            -X POST "https://api.vercel.com/v2/deployments/${DEPLOYMENT_ID}/aliases?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data "{\"alias\":\"${CANONICAL_DOMAIN}\",\"redirect\":null}")
+          echo "Assign alias HTTP ${HTTP}"
+          cat /tmp/assign.json
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "201" ]; then exit 1; fi
+
+      - name: Verify brand-v8 marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 18); do
+            curl --silent --show-error --fail \
+              -H 'Cache-Control: no-cache, no-store, max-age=0' \
+              -H 'Pragma: no-cache' \
+              "https://${CANONICAL_DOMAIN}/?brand_v8=${RANDOM}${RANDOM}" -o /tmp/live.html || true
+            if grep -q 'simasi-release" content="brand-v8' /tmp/live.html; then
+              echo "BRAND_V8_VISIBLE=true"
+              echo 'Canonical domain is now serving brand-v8.'
+              exit 0
+            fi
+            echo "Attempt $i: canonical still stale"
+            sleep 5
+          done
+          echo 'Canonical alias is still serving stale content after hard reset.'
+          exit 1
