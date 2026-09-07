@@ -38,7 +38,7 @@ jobs:
           curl --silent --show-error "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&order=created_at.desc" \
             -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" >/tmp/all.json
           curl --silent --show-error -D /tmp/pub.headers "$SUPABASE_URL/rest/v1/pengumuman?select=id,judul,tanggal,is_active,created_at&is_active=eq.true&order=tanggal.desc" \
-            -H "apikey: $PUBLISHABLE" >/tmp/pub.json
+            -H "apikey: $PUBLISHABLE" -H "Authorization: Bearer $PUBLISHABLE" >/tmp/pub.json
           ALL_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/all.json)
           ACTIVE_COUNT=$(jq '[.[] | select(.is_active==true)] | length' /tmp/all.json 2>/dev/null || echo 0)
           PUB_COUNT=$(jq 'if type=="array" then length else 0 end' /tmp/pub.json)
@@ -49,6 +49,6 @@ jobs:
           echo "- active_service_visible: $ACTIVE_COUNT" >> "$GITHUB_STEP_SUMMARY"
           echo "- frontend_publishable_http: $PUB_HTTP" >> "$GITHUB_STEP_SUMMARY"
           echo "- frontend_active_visible: $PUB_COUNT" >> "$GITHUB_STEP_SUMMARY"
-          jq -r '.[0:5][]? | "  - [active=\(.is_active)] \(.tanggal) | \(.judul)"' /tmp/all.json >> "$GITHUB_STEP_SUMMARY"
+          echo "- frontend_body: $(jq -c 'if type==\"array\" then map({judul,tanggal,is_active}) else . end' /tmp/pub.json)" >> "$GITHUB_STEP_SUMMARY"
           test "$PUB_HTTP" = "200"
           test "$PUB_COUNT" -eq "$ACTIVE_COUNT"
