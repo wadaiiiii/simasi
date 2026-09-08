@@ -1,0 +1,3 @@
+SIMASI session refresh patch trigger
+Timestamp: 2026-09-08T09:02:00+08:00
+Scope: preserve authenticated Supabase session across browser/mobile page reload; render private dashboard after session restore
