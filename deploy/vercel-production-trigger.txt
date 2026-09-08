@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: admin delete account + delete seminar registration controls
+Frontend: open Import Data Mahasiswa to Staff with program-study scope notice/preflight
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T07:59:00+08:00
-Reason: admin can remove accounts and seminar submissions with explicit confirmation
+Triggered: 2026-09-08T08:02:00+08:00
+Reason: Staff Akademik can import/update only mahasiswa from staff profile.prodi
