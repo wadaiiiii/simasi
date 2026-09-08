@@ -238,7 +238,7 @@ async function handleChange(e){
   if(t.id==='importFile'){
     const f=t.files?.[0];if(!f)return
     $('#importFileName').textContent=f.name;loading(true,'Membaca data mahasiswa...')
-    try{state.importRows=await parseImport(f);renderImportRows();toast(`${state.importRows.length} mahasiswa terdeteksi.`)}catch(err){state.importRows=[];renderImportRows();toast(err.message,'err')}finally{loading(false)}
+    try{state.importRows=await parseImport(f);renderImportRows();const detected=[...new Set(state.importRows.map(r=>normalizeProdi(r.prodi)).filter(Boolean))];toast(`${state.importRows.length} mahasiswa terdeteksi${detected.length?` • Prodi: ${detected.join(', ')}`:''}.`)}catch(err){state.importRows=[];renderImportRows();toast(err.message,'err')}finally{loading(false)}
     return
   }
   if(t.matches('.doc-input')){
