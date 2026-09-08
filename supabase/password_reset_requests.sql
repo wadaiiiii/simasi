@@ -10,7 +10,7 @@ create table if not exists public.password_reset_requests (
   email text,
   role text not null,
   prodi text,
-  status text not null default 'menunggu' check (status in ('menunggu','selesai')),
+  status text not null default 'menunggu' check (status in ('menunggu','diproses','selesai')),
   requested_at timestamptz not null default now(),
   processed_at timestamptz,
   processed_by uuid references auth.users(id) on delete set null
@@ -18,7 +18,7 @@ create table if not exists public.password_reset_requests (
 
 create unique index if not exists password_reset_requests_one_pending_per_user
   on public.password_reset_requests(user_id)
-  where status = 'menunggu';
+  where status in ('menunggu','diproses');
 
 create index if not exists password_reset_requests_status_requested_idx
   on public.password_reset_requests(status, requested_at desc);
@@ -29,5 +29,4 @@ create index if not exists password_reset_requests_prodi_role_idx
 alter table public.password_reset_requests enable row level security;
 
 revoke all on table public.password_reset_requests from anon, authenticated;
-
 grant all on table public.password_reset_requests to service_role;
