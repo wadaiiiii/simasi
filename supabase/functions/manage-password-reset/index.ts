@@ -35,15 +35,20 @@ Deno.serve(async (req) => {
         .from('password_reset_requests')
         .select('id,user_id,full_name,nim,email,role,prodi,status,requested_at,processed_at,processed_by')
         .order('requested_at', { ascending: false })
-        .limit(100)
+        .limit(200)
 
       if (actorRole === 'staff') {
-        query = query.eq('role', 'mahasiswa').eq('prodi', actorProdi)
+        query = query.eq('role', 'mahasiswa')
       }
 
       const result = await query
       if (result.error) throw result.error
-      return json({ ok: true, requests: result.data || [] })
+
+      const requests = actorRole === 'staff'
+        ? (result.data || []).filter((row: any) => normalizeProdi(row?.prodi) === actorProdi)
+        : (result.data || [])
+
+      return json({ ok: true, requests })
     }
 
     if (action === 'process') {
