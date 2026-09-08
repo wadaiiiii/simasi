@@ -54,13 +54,57 @@ export function loading(on,text='Memproses...'){
   if(el.firstElementChild) el.firstElementChild.textContent=text
   el.classList.toggle('hidden',!on); el.classList.toggle('flex',on)
 }
-export async function edge(name,body){
-  const {data,error}=await supabaseClient.functions.invoke(name,{body})
-  if(error){
-    let msg=error.message||`${name} gagal.`
-    try{const res=error.context;if(res?.clone){const j=await res.clone().json();msg=j?.message||j?.error||msg}}catch{}
-    throw new Error(msg)
+
+async function activeSession(forceRefresh=false){
+  if(!supabaseClient)throw new Error('Koneksi backend belum tersedia.')
+  if(forceRefresh){
+    const refreshed=await supabaseClient.auth.refreshSession()
+    if(refreshed.error||!refreshed.data?.session)throw new Error('Sesi login telah berakhir. Silakan login kembali.')
+    return refreshed.data.session
   }
+  const current=await supabaseClient.auth.getSession()
+  if(current.error||!current.data?.session)throw new Error('Sesi login tidak ditemukan. Silakan login kembali.')
+  let session=current.data.session
+  const expiresAt=Number(session.expires_at||0)*1000
+  if(expiresAt&&expiresAt-Date.now()<60000){
+    const refreshed=await supabaseClient.auth.refreshSession()
+    if(refreshed.error||!refreshed.data?.session)throw new Error('Sesi login telah berakhir. Silakan login kembali.')
+    session=refreshed.data.session
+  }
+  return session
+}
+
+async function invokeEdge(name,body,forceRefresh=false){
+  const session=await activeSession(forceRefresh)
+  return supabaseClient.functions.invoke(name,{
+    body,
+    headers:{Authorization:`Bearer ${session.access_token}`}
+  })
+}
+
+function edgeErrorMessage(error,name){
+  let msg=error?.message||`${name} gagal.`
+  try{
+    const res=error?.context
+    if(res?.clone){
+      return res.clone().json().then(j=>j?.message||j?.error||msg).catch(()=>msg)
+    }
+  }catch{}
+  return Promise.resolve(msg)
+}
+
+export async function edge(name,body){
+  let result=await invokeEdge(name,body,false)
+  if(result.error){
+    const firstMsg=await edgeErrorMessage(result.error,name)
+    const status=Number(result.error?.context?.status||0)
+    const unauthorized=status===401||String(firstMsg).toLowerCase().includes('unauthorized')
+    if(unauthorized){
+      try{result=await invokeEdge(name,body,true)}catch(e){throw e}
+    }
+  }
+  const {data,error}=result
+  if(error)throw new Error(await edgeErrorMessage(error,name))
   if(data?.ok===false) throw new Error(data.message||`${name} gagal.`)
   return data
 }
