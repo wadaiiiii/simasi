@@ -1,0 +1,3 @@
+SIMASI SIAKAD PDF import parser patch trigger
+Timestamp: 2026-09-08T08:10:00+08:00
+Scope: read Program Studi from PDF header and NIM + Nama from attendance table rows
