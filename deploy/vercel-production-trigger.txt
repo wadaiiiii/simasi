@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: SIAKAD attendance PDF parser reads Program Studi from header and NIM + Nama from table rows
+Frontend: authenticated Edge Function calls explicitly send current Supabase user access token and refresh once on 401
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T08:42:00+08:00
-Reason: support SIAKAD daftar hadir PDF such as Ilmu Aktuaria attendance sheets for student import
+Triggered: 2026-09-08T09:02:00+08:00
+Reason: fix Import Data Mahasiswa Unauthorized after successful file detection
