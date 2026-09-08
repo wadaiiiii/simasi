@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: open Import Data Mahasiswa to Staff with program-study scope notice/preflight
+Frontend: SIAKAD attendance PDF parser reads Program Studi from header and NIM + Nama from table rows
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T08:02:00+08:00
-Reason: Staff Akademik can import/update only mahasiswa from staff profile.prodi
+Triggered: 2026-09-08T08:42:00+08:00
+Reason: support SIAKAD daftar hadir PDF such as Ilmu Aktuaria attendance sheets for student import
