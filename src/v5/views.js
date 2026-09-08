@@ -21,6 +21,7 @@ function staffNav(){
   return `<p class="px-3 py-2 text-[10px] font-bold uppercase tracking-[.2em] text-slate-400">Staf Akademik</p>
     <button data-page="staff-dashboard" class="simasi-nav">▦ Dashboard Staf</button>
     <button data-page="admin-registrations" class="simasi-nav">☷ Monitoring Pendaftar</button>
+    <button data-page="admin-import" class="simasi-nav">⇧ Import Data Mahasiswa</button>
     <div class="my-4 border-t border-white/10"></div><button data-action="logout" class="simasi-nav text-rose-200">← Keluar</button>`
 }
 function lecturerNav(){
@@ -66,7 +67,7 @@ export function titleFor(page){
     'lecturer-dashboard':['Dashboard Dosen','Dosen SIMASI'],
     'admin-registrations':['Monitoring Pendaftar','Verifikasi Berkas Seminar'],
     'admin-announcements':['Informasi Akademik','Administrator SIMASI'],
-    'admin-import':['Import Data Mahasiswa','Administrator SIMASI'],
+    'admin-import':['Import Data Mahasiswa',isStaff()&&!isAdmin()?'Staf Akademik SIMASI':'Administrator SIMASI'],
     'admin-users':['Pengelolaan User','Administrator SIMASI'],
     'student-dashboard':['Dashboard','Mahasiswa SIMASI'],
     'student-applications':['Monitor Pengajuan','Mahasiswa SIMASI'],
@@ -79,7 +80,7 @@ const stat=(label,id)=>`<div class="simasi-card p-5"><p class="text-xs font-bold
 export function adminDashboardHtml(staff=false){
   return `<div class="simasi-hero rounded-3xl p-7 text-white"><p class="text-xs font-extrabold uppercase tracking-[.16em] text-emerald-200">${staff?'Staf Akademik':'Administrator'} SIMASI</p><h2 class="mt-3 text-3xl font-extrabold">Dashboard ${staff?'Staf':'Admin'}</h2><p class="mt-2 text-sm text-slate-200">Ringkasan proses verifikasi Seminar Proposal dan Seminar Hasil FMIPA.</p></div>
     <div id="adminStats" class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">${stat('Mahasiswa','statStudents')}${stat('Total Pengajuan','statRegs')}${stat('Perlu Verifikasi','statPending')}${stat('Berkas Lengkap','statComplete')}</div>
-    <div class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_.7fr]"><div class="simasi-card overflow-hidden"><div class="flex items-center justify-between border-b p-5"><div><h3 class="font-extrabold">Pengajuan Terbaru</h3><p class="mt-1 text-xs text-slate-500">Pengajuan yang perlu dipantau.</p></div><button data-page="admin-registrations" class="rounded-xl border px-4 py-2 text-xs font-extrabold">Lihat Semua</button></div><div class="overflow-x-auto"><table class="simasi-table min-w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-4 text-left">Mahasiswa</th><th class="p-4 text-left">Jenis</th><th class="p-4 text-left">Status</th><th class="p-4 text-left">Tanggal</th></tr></thead><tbody id="recentRegs"><tr><td colspan="4" class="p-8 text-center text-slate-500">Memuat...</td></tr></tbody></table></div></div><div class="simasi-card p-5"><h3 class="font-extrabold">Akses Cepat</h3><div class="mt-4 grid gap-3"><button data-page="admin-registrations" class="rounded-xl bg-[#182e79] px-4 py-3 text-left text-sm font-extrabold text-white">Monitoring Pendaftar</button>${staff?'':`<button data-page="admin-announcements" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Informasi Akademik</button><button data-page="admin-import" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Import Mahasiswa</button>`}</div></div></div>`
+    <div class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_.7fr]"><div class="simasi-card overflow-hidden"><div class="flex items-center justify-between border-b p-5"><div><h3 class="font-extrabold">Pengajuan Terbaru</h3><p class="mt-1 text-xs text-slate-500">Pengajuan yang perlu dipantau.</p></div><button data-page="admin-registrations" class="rounded-xl border px-4 py-2 text-xs font-extrabold">Lihat Semua</button></div><div class="overflow-x-auto"><table class="simasi-table min-w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-4 text-left">Mahasiswa</th><th class="p-4 text-left">Jenis</th><th class="p-4 text-left">Status</th><th class="p-4 text-left">Tanggal</th></tr></thead><tbody id="recentRegs"><tr><td colspan="4" class="p-8 text-center text-slate-500">Memuat...</td></tr></tbody></table></div></div><div class="simasi-card p-5"><h3 class="font-extrabold">Akses Cepat</h3><div class="mt-4 grid gap-3"><button data-page="admin-registrations" class="rounded-xl bg-[#182e79] px-4 py-3 text-left text-sm font-extrabold text-white">Monitoring Pendaftar</button>${staff?`<button data-page="admin-import" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Import Mahasiswa</button>`:`<button data-page="admin-announcements" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Informasi Akademik</button><button data-page="admin-import" class="rounded-xl border px-4 py-3 text-left text-sm font-extrabold">Import Mahasiswa</button>`}</div></div></div>`
 }
 
 export function lecturerDashboardHtml(){

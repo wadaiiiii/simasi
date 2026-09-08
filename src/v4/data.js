@@ -85,6 +85,13 @@ export function renderImportRows(){
 }
 export async function doImport(){
   if(!state.importRows.length)return
+  const actorRole=String(state.profile?.role||'').toLowerCase()
+  const staffScope=actorRole==='staff'?normalizeProdi(state.profile?.prodi||''):''
+  if(actorRole==='staff'){
+    if(!staffScope)return toast('Program Studi akun Staff belum ditetapkan. Hubungi Admin.','err')
+    const outside=state.importRows.filter(r=>normalizeProdi(r.prodi)!==staffScope)
+    if(outside.length)return toast(`Import ditolak: ${outside.length} data berada di luar Prodi ${staffScope}. Pisahkan file sesuai Program Studi Staff.`,'err')
+  }
   const box=$('#importResult');loading(true,`Mengimpor ${state.importRows.length} mahasiswa...`)
   try{
     const data=await edge('import-mahasiswa',{students:state.importRows})

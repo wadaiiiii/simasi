@@ -22,13 +22,28 @@ Deno.serve(async (req) => {
 
   try {
     const { profile, admin } = await getContext(req)
-    if (String(profile.role || '').toLowerCase() !== 'admin') {
-      return json({ ok: false, message: 'Hanya admin yang dapat mengimpor mahasiswa.' }, 403)
+    const actorRole = String(profile.role || '').toLowerCase()
+    if (!['admin', 'staff'].includes(actorRole)) {
+      return json({ ok: false, message: 'Hanya Admin atau Staff Akademik yang dapat mengimpor mahasiswa.' }, 403)
+    }
+    const staffProdi = actorRole === 'staff' ? normalizeProdi(profile.prodi) : ''
+    if (actorRole === 'staff' && !staffProdi) {
+      return json({ ok: false, message: 'Program Studi akun Staff belum ditetapkan. Hubungi Admin.' }, 403)
     }
 
     const body = await req.json()
     const students = Array.isArray(body.students) ? body.students.slice(0, 500) : []
     if (!students.length) return json({ ok: false, message: 'Tidak ada data mahasiswa untuk diimpor.' }, 400)
+
+    if (actorRole === 'staff') {
+      const outside = students.filter((raw: any) => normalizeProdi(raw?.prodi) !== staffProdi)
+      if (outside.length) {
+        return json({
+          ok: false,
+          message: `Import ditolak: ${outside.length} data berada di luar Program Studi ${staffProdi}. Staff hanya dapat mengelola mahasiswa Prodinya sendiri.`
+        }, 403)
+      }
+    }
 
     let created = 0
     let updated = 0

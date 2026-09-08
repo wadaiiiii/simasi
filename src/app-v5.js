@@ -36,8 +36,8 @@ async function renderPrivate(){
 }
 
 function pageAllowed(page){
-  if(page==='admin-users'||page==='admin-import'||page==='admin-announcements'||page==='admin-dashboard')return isAdmin()
-  if(page==='admin-registrations'||page==='staff-dashboard')return isStaff()
+  if(page==='admin-users'||page==='admin-announcements'||page==='admin-dashboard')return isAdmin()
+  if(page==='admin-registrations'||page==='staff-dashboard'||page==='admin-import')return isStaff()
   if(page==='lecturer-dashboard')return isLecturer()
   if(page==='student-dashboard'||page==='student-applications'||page==='seminar')return isStudent()
   return true
@@ -63,7 +63,15 @@ async function renderPage(){
     await loadRegistrations();return
   }
   if(state.page==='admin-announcements'){main.innerHTML=announcementsHtml();await loadAnnouncementsAdmin();return}
-  if(state.page==='admin-import'){main.innerHTML=importHtml();state.importRows=[];renderImportRows();return}
+  if(state.page==='admin-import'){
+    main.innerHTML=importHtml();state.importRows=[];renderImportRows()
+    if(isStaff()&&!isAdmin()){
+      const scope=normalizeProdi(state.profile?.prodi||'')
+      const host=main.querySelector('div')
+      if(host)host.insertAdjacentHTML('afterbegin',`<div class="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800"><b>Import Staff ${scope||'Program Studi belum ditetapkan'}</b><div class="mt-1 text-xs leading-5">Staff hanya dapat mengimpor atau memperbarui mahasiswa dari Program Studi akun sendiri. Data Prodi lain akan ditolak sebelum proses import berjalan.</div></div>`)
+    }
+    return
+  }
   if(state.page==='admin-users'){main.innerHTML=usersHtml();await loadUsers();return}
   if(state.page==='student-applications'){main.innerHTML=studentApplicationsHtml();await loadStudentApplications();return}
   if(state.page==='seminar'){main.innerHTML=seminarHtml();validateSeminar();return}
