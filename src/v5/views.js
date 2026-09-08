@@ -12,6 +12,7 @@ function adminNav(){
     <button data-page="admin-announcements" class="simasi-nav">◉ Informasi Akademik</button>
     <button data-page="admin-import" class="simasi-nav">⇧ Import Data Mahasiswa</button>
     <button data-page="admin-users" class="simasi-nav">♙ Pengelolaan User</button>
+    <button data-page="password-reset-requests" class="simasi-nav">🔐 Permintaan Reset Password</button>
     <div class="my-4 border-t border-white/10"></div>
     <button class="simasi-nav disabled" disabled>▤ Manajemen Kuliah <span class="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[9px]">Segera</span></button>
     <button class="simasi-nav disabled" disabled>✎ Logbook Skripsi <span class="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[9px]">Segera</span></button>
@@ -22,6 +23,7 @@ function staffNav(){
     <button data-page="staff-dashboard" class="simasi-nav">▦ Dashboard Staf</button>
     <button data-page="admin-registrations" class="simasi-nav">☷ Monitoring Pendaftar</button>
     <button data-page="admin-import" class="simasi-nav">⇧ Import Data Mahasiswa</button>
+    <button data-page="password-reset-requests" class="simasi-nav">🔐 Permintaan Reset Password</button>
     <div class="my-4 border-t border-white/10"></div><button data-action="logout" class="simasi-nav text-rose-200">← Keluar</button>`
 }
 function lecturerNav(){
@@ -69,6 +71,7 @@ export function titleFor(page){
     'admin-announcements':['Informasi Akademik','Administrator SIMASI'],
     'admin-import':['Import Data Mahasiswa',isStaff()&&!isAdmin()?'Staf Akademik SIMASI':'Administrator SIMASI'],
     'admin-users':['Pengelolaan User','Administrator SIMASI'],
+    'password-reset-requests':['Permintaan Reset Password',isAdmin()?'Administrator SIMASI':'Staf Akademik SIMASI'],
     'student-dashboard':['Dashboard','Mahasiswa SIMASI'],
     'student-applications':['Monitor Pengajuan','Mahasiswa SIMASI'],
     seminar:['Seminar Proposal/Seminar Hasil','Layanan Mahasiswa']

@@ -16,7 +16,7 @@ function loginModal(){
             <button class="w-full rounded-2xl bg-[linear-gradient(90deg,#0a7bb5_0%,#2235ae_58%,#491699_100%)] px-5 py-3.5 font-extrabold text-white shadow-lg shadow-[#2235ae]/20 transition hover:-translate-y-0.5">Masuk</button>
           </form>
           <div id="loginError" class="mt-4 hidden rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"></div>
-          <button id="forgotPassword" class="mt-5 w-full text-center text-xs font-extrabold text-[#2235ae]">Lupa password?</button>
+          <button id="forgotPassword" data-action="open-reset-request" class="mt-5 w-full text-center text-xs font-extrabold text-[#2235ae]">Lupa Password? Ajukan Reset</button>
         </div>
       </div>
     </div>

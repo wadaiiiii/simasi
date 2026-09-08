@@ -1,6 +1,7 @@
 import { $, $$, state, isAdmin, isStaff, isLecturer, isStudent, normalizeProdi, loginEmail, supabaseClient, hasSupabaseConfiguration, refreshSession, toast, loading, MAX_FILE, PRODI } from './v4/core.js'
 import { landingHtml } from './v4/landing-simple.js'
 import { privateShell, titleFor, adminDashboardHtml, lecturerDashboardHtml, registrationsHtml, announcementsHtml, importHtml, usersHtml, studentDashboardHtml, studentApplicationsHtml, seminarHtml } from './v5/views.js'
+import { passwordResetRequestsHtml, loadPasswordResetRequests } from './v5/password-reset.js'
 import { loadLandingData, parseImport, renderImportRows, doImport, downloadTemplate, loadUsers, renderUserRows, resetUser, deleteUser } from './v4/data.js'
 import {
   loadAdminDashboard, loadRegistrations, renderRegistrationRows, openAdminReview, saveDocReview,
@@ -37,7 +38,7 @@ async function renderPrivate(){
 
 function pageAllowed(page){
   if(page==='admin-users'||page==='admin-announcements'||page==='admin-dashboard')return isAdmin()
-  if(page==='admin-registrations'||page==='staff-dashboard'||page==='admin-import')return isStaff()
+  if(page==='admin-registrations'||page==='staff-dashboard'||page==='admin-import'||page==='password-reset-requests')return isStaff()
   if(page==='lecturer-dashboard')return isLecturer()
   if(page==='student-dashboard'||page==='student-applications'||page==='seminar')return isStudent()
   return true
@@ -72,6 +73,7 @@ async function renderPage(){
     }
     return
   }
+  if(state.page==='password-reset-requests'){main.innerHTML=passwordResetRequestsHtml();await loadPasswordResetRequests();return}
   if(state.page==='admin-users'){main.innerHTML=usersHtml();await loadUsers();return}
   if(state.page==='student-applications'){main.innerHTML=studentApplicationsHtml();await loadStudentApplications();return}
   if(state.page==='seminar'){main.innerHTML=seminarHtml();validateSeminar();return}
