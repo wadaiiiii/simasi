@@ -1,5 +1,5 @@
 SIMASI Supabase production release trigger
-Timestamp: 2026-09-08T07:58:00+08:00
+Timestamp: 2026-09-08T08:01:00+08:00
 Database migration: existing lifecycle + staff program-study scope
-Edge Functions: admin-users + admin-seminar + preview/upload seminar functions
-Reason: add admin delete account and delete seminar registration with Google Drive cleanup
+Edge Functions: import-mahasiswa + admin-users + admin-seminar + preview/upload seminar functions
+Reason: allow Staff Akademik to import/update mahasiswa only within staff profile.prodi
