@@ -29,6 +29,11 @@ function readNamedKey(jsonName: string, legacyName: string): string {
 }
 
 const normalizeNim = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, '').toUpperCase()
+const normalizeProdi = (value: unknown) => {
+  const allowed = ['Matematika', 'Statistika', 'Aktuaria', 'Bioteknologi']
+  const text = String(value ?? '').toLowerCase()
+  return allowed.find((p) => text.includes(p.toLowerCase())) || ''
+}
 const genericMessage = 'Jika NIM/email terdaftar, permintaan reset password akan diteruskan ke pengelola SIMASI.'
 
 Deno.serve(async (req) => {
@@ -85,7 +90,7 @@ Deno.serve(async (req) => {
         nim: profile.nim || null,
         email: profile.email || null,
         role,
-        prodi: profile.prodi || null,
+        prodi: normalizeProdi(profile.prodi) || profile.prodi || null,
         status: 'menunggu'
       })
 
