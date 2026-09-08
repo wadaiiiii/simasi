@@ -1,0 +1,31 @@
+name: SIMASI Staff Import Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/staff-import-patch-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply staff import patch
+        run: python3 scripts/patch-staff-import.py
+      - name: Syntax checks
+        run: |
+          node --check src/app-v5.js
+          node --check src/v4/data.js
+          node --check src/v5/views.js
+      - name: Commit patch
+        run: |
+          git config user.name 'SIMASI Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/app-v5.js src/v4/data.js src/v5/views.js supabase/functions/import-mahasiswa/index.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: allow staff to import students by program study'
+          git push origin main
