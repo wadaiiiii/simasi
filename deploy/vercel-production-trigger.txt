@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: authenticated Edge Function calls explicitly send current Supabase user access token and refresh once on 401
+Frontend: preserve authenticated Supabase session across browser/mobile page reload; render role dashboard after persisted session restore
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T09:02:00+08:00
-Reason: fix Import Data Mahasiswa Unauthorized after successful file detection
+Triggered: 2026-09-08T09:13:00+08:00
+Reason: fix refresh appearing to log users out because init always rendered public landing after refreshSession
