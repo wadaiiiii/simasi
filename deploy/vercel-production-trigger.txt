@@ -1,6 +1,6 @@
 Controlled SIMASI Vercel production checkpoint
 Canonical domain: https://simasimipa.vercel.app
-Frontend: preserve authenticated Supabase session across browser/mobile page reload; render role dashboard after persisted session restore
+Frontend: add public password reset request form plus Admin/Staff reset-request management page
 Deployment path: Vercel REST API from built dist + canonical alias assignment
-Triggered: 2026-09-08T09:13:00+08:00
-Reason: fix refresh appearing to log users out because init always rendered public landing after refreshSession
+Triggered: 2026-09-08T09:55:00+08:00
+Reason: implement in-app password reset request workflow without email dependency
