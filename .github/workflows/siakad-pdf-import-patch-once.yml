@@ -1,0 +1,30 @@
+name: SIMASI SIAKAD PDF Import Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/siakad-pdf-import-patch-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply SIAKAD PDF parser patch
+        run: python3 scripts/patch-siakad-pdf-import.py
+      - name: Syntax checks
+        run: |
+          node --check src/v4/data.js
+          node --check src/app-v5.js
+      - name: Commit patch
+        run: |
+          git config user.name 'SIMASI Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/v4/data.js src/app-v5.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: parse SIAKAD attendance PDF for prodi NIM and name'
+          git push origin main
